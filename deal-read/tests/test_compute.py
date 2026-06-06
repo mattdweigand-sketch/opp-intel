@@ -128,6 +128,56 @@ def main():
     r = run({"roles": ["influencer"]})
     ok &= check("meddpicc: economic_buyer_named False (influencer only)", r["flags"]["economic_buyer_named"] is False)
 
+    # Calendar flags are deterministic and only fire when Calendar coverage is available.
+    r = run({
+        "today": "2026-06-03",
+        "opportunity": {"close_date": "2026-06-20"},
+        "calendar_evidence": {"coverage": "available", "historical_meetings": [], "upcoming_meetings": []},
+    })
+    ok &= check("calendar: no upcoming late-stage True", r["flags"]["calendar_no_upcoming_late_stage"] is True)
+
+    r = run({
+        "today": "2026-06-03",
+        "opportunity": {"stage_entered_date": "2026-05-29", "close_date": "2026-07-15"},
+        "calendar_evidence": {
+            "coverage": "available",
+            "historical_meetings": [{"start": "2026-05-20T15:00:00Z"}],
+            "upcoming_meetings": [{"start": "2026-06-10T15:00:00Z", "attendees": ["buyer@example.com"]}],
+        },
+    })
+    ok &= check("calendar: no recent meeting after stage move True",
+                r["flags"]["calendar_no_recent_meeting_after_stage_move"] is True)
+    ok &= check("calendar: buyer attendee prevents attendee flag",
+                r["flags"]["calendar_next_meeting_no_buyer_attendees"] is False)
+
+    r = run({
+        "today": "2026-06-03",
+        "opportunity": {"close_date": "2026-06-20"},
+        "calendar_evidence": {"coverage": "available", "upcoming_meetings": [{"start": "2026-06-10T15:00:00Z", "attendees": []}]},
+    })
+    ok &= check("calendar: next meeting no buyer attendees True",
+                r["flags"]["calendar_next_meeting_no_buyer_attendees"] is True)
+    ok &= check("calendar: upcoming meeting prevents no-upcoming flag",
+                r["flags"]["calendar_no_upcoming_late_stage"] is False)
+
+    r = run({
+        "today": "2026-06-03",
+        "opportunity": {"close_date": "2026-06-20", "stage_entered_date": "2026-05-29"},
+        "calendar_evidence": {"coverage": "unavailable", "source_gaps": ["calendar_unavailable"]},
+    })
+    ok &= check("calendar: unavailable does not create risk flags",
+                r["flags"]["calendar_no_upcoming_late_stage"] is False
+                and r["flags"]["calendar_no_recent_meeting_after_stage_move"] is False
+                and r["flags"]["calendar_next_meeting_no_buyer_attendees"] is False)
+
+    r = run({
+        "today": "2026-06-03",
+        "opportunity": {"close_date": "2026-06-20", "StageName": "Closed Won"},
+        "calendar_evidence": {"coverage": "available", "upcoming_meetings": []},
+    })
+    ok &= check("calendar: closed opp suppresses no-upcoming flag",
+                r["flags"]["calendar_no_upcoming_late_stage"] is False)
+
     # Fixture 6: empty input is null-safe, no crash, every flag False.
     r = run({})
     ok &= check("empty: flags all False", all(v is False for v in r["flags"].values()))

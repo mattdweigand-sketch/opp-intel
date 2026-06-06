@@ -169,7 +169,11 @@ def first_list(*values):
 def main():
     bundle = json.load(sys.stdin)
 
-    deal_metrics = run_script("compute.py", stdin_obj=bundle.get("compute_input", {}))
+    calendar_evidence = normalize_calendar_evidence(bundle.get("calendar_evidence"))
+    compute_input = dict(bundle.get("compute_input") or {})
+    if calendar_evidence and "calendar_evidence" not in compute_input:
+        compute_input["calendar_evidence"] = calendar_evidence
+    deal_metrics = run_script("compute.py", stdin_obj=compute_input)
 
     call_execution = None
     tf = bundle.get("transcript_file")
@@ -180,7 +184,7 @@ def main():
         "deal_metrics": deal_metrics,
         "call_execution": call_execution,
         "account_history": account_history(bundle.get("prior_opps")),
-        "calendar_evidence": normalize_calendar_evidence(bundle.get("calendar_evidence")),
+        "calendar_evidence": calendar_evidence,
         "internal_evidence": normalize_internal_evidence(bundle.get("internal_evidence")),
     }
     json.dump(out, sys.stdout, indent=2)

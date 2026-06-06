@@ -68,6 +68,18 @@ def main():
     nr["ranking"][0]  # smoke
     ok &= check("clean deal has zero flag_count", nr["ranking"][0]["flag_count"] == 0)
 
+    calendar = run({"mode": "triage", "deals": [
+        deal("Calendar Risk", 100000, 12, {"calendar_no_upcoming_late_stage": True}),
+        deal("Calendar Amber", 90000, 12, {"calendar_next_meeting_no_buyer_attendees": True}),
+        deal("Clean", 80000, 12, {}),
+    ]})
+    ok &= check("calendar: no-upcoming late-stage ranks red",
+                calendar["ranking"][0]["dominant_flag"] == "calendar_no_upcoming_late_stage"
+                and calendar["ranking"][0]["severity_tier"] == "red")
+    ok &= check("calendar: no buyer attendee ranks amber",
+                calendar["ranking"][1]["dominant_flag"] == "calendar_next_meeting_no_buyer_attendees"
+                and calendar["ranking"][1]["severity_tier"] == "amber")
+
     # Empty pipeline doesn't divide by zero.
     empty = run({"deals": []})
     ok &= check("empty: pct is None, no crash", empty["portfolio"]["acv_at_risk_pct"] is None)

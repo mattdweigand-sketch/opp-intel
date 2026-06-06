@@ -83,6 +83,12 @@
         "unanswered_rep_emails": 0,
         "median_response_latency_days": null
       },
+      "calendar": {
+        "coverage": "available",
+        "last_meeting_date": "2026-05-20",
+        "next_meeting_date": "2026-06-10",
+        "source_gaps": []
+      },
       "flags": {
         "stale_activity": false,
         "single_threaded": false,
@@ -93,7 +99,10 @@
         "recent_rep_outbound": false,
         "economic_buyer_named": false,
         "champion_identified": false,
-        "paper_not_started": false
+        "paper_not_started": false,
+        "calendar_no_upcoming_late_stage": false,
+        "calendar_no_recent_meeting_after_stage_move": false,
+        "calendar_next_meeting_no_buyer_attendees": true
       },
       "thresholds_used": {
         "email_window_days": 90,

@@ -116,8 +116,8 @@
       }
     ],
     "severity_tiers_used": {
-      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage"],
-      "amber": ["stale_activity", "email_data_stale"]
+      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage", "calendar_no_upcoming_late_stage"],
+      "amber": ["stale_activity", "email_data_stale", "calendar_no_recent_meeting_after_stage_move", "calendar_next_meeting_no_buyer_attendees"]
     },
     "forecast": {
       "amount_basis": "acv",

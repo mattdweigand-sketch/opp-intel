@@ -22,6 +22,7 @@ A review brief, short enough to read before a call:
 - **Top risks:** the three highest-severity ones, each with cited evidence and a specific next action.
 - **What's going well**, so it is not all red.
 - **How you ran the call:** talk ratio, question count, and the discovery topics you missed.
+- **Calendar context:** recent and upcoming customer meetings, with meeting-cadence flags when Calendar coverage is available.
 - **Internal evidence:** mapped Slack deal-room context and linked proposal-doc coverage, with gaps named when those sources are missing or unavailable.
 - **Your next move this week.**
 - A **Computed inputs** footer: the verbatim output of the analysis scripts, proof the numbers were computed, not guessed.

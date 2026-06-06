@@ -30,6 +30,9 @@ def main():
     ok &= check("shared risk thresholds exist", model["thresholds"]["email_window_days"] == 90)
     ok &= check("deal legal status preserved", "legal_status" in model)
     ok &= check("pipeline config exists", "pipeline" in model and "flag_severity" in model["pipeline"])
+    ok &= check("calendar scoring thresholds exist",
+                model["calendar"]["scoring"]["late_stage_days_to_close"] == 30
+                and model["calendar"]["scoring"]["recent_stage_movement_days"] == 14)
     ok &= check("hygiene remains SF-only",
                 profiles["hygiene"]["email"] == "off"
                 and profiles["hygiene"]["calendar"] == "off"
@@ -41,6 +44,8 @@ def main():
     ok &= check("contact role grounding preserved", {"Role", "IsPrimary"}.issubset(set(fields["contact_fields"])))
     ok &= check("read-only source contract", contracts["read_policy"]["sources_are_read_only"] is True)
     ok &= check("calendar source contract", contracts["sources"]["calendar"]["profiles"] == ["deal", "pipeline"])
+    ok &= check("calendar flags excluded from hygiene precedence",
+                all(not flag.startswith("calendar_") for flag in model["hygiene"]["flag_precedence"]))
     ok &= check("deal draft confirmation contract",
                 contracts["read_policy"]["deal_read_gmail_draft"] == "explicit_user_confirmation_only")
 

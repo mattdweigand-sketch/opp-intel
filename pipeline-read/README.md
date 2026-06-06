@@ -29,10 +29,10 @@ Triage and forecast both score deal risk off the same live per-deal evidence; hy
 completeness off a cheap Salesforce-only scan. Reach for hygiene first to clean the data, triage to
 decide where the week goes, and forecast when you need to commit a number.
 
-Other entry points:
+Other options:
 
 - `--next-quarter` runs any view against next fiscal quarter.
-- For in-depth single-deal analysis, use [Deal Read](https://github.com/mattdweigand-sketch/deal-read).
+- For in-depth single-deal analysis, use `../deal-read` in this repo.
 
 Forecast options:
 
@@ -79,8 +79,10 @@ A triage or forecast brief, short enough to read before a forecast call:
 ## How it ranks
 
 Deals are ranked by **severity of current evidence**, not by a predicted probability of winning. A deal
-carrying a `red` flag (overdue, slipped, single-threaded, stalled) outranks one with only `amber` flags;
-ties break on flag count, then ACV, then days-to-close, all observed facts. There is **no win-
+carrying a `red` flag (overdue, slipped, single-threaded, stalled, or late-stage with no upcoming
+customer meeting) outranks one with only `amber` flags; ties break on flag count, then ACV, then
+days-to-close, all observed facts. Calendar flags only count when Calendar coverage is available;
+unavailable Calendar is an evidence gap, not a risk flag. There is **no win-
 probability model** here by design: grading deals against win/loss outcomes is a central, pooled data
 product, never something this local per-rep skill does. The flag-severity tiers live in
 `../core/config/risk-model.json`.
@@ -89,11 +91,11 @@ Forecast recommendation labels also come from `../core/scripts/rollup.py`: `keep
 `possible_upside`. They are deterministic posture labels, not CRM writebacks and not win-probability
 scores.
 
-Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Slack deal
-rooms and linked proposal docs can affect confidence, evidence gaps, risk notes, internal owner, and
-next-move wording. They cannot change deterministic ranking or Salesforce-owned fields. Broad Slack or
-Drive lookup is allowed only when the internal mode is `force` (the default); `auto` restricts to mapped
-deal rooms only.
+Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
+affect meeting-cadence flags in triage and forecast. Slack deal rooms and linked proposal docs can
+affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
+deterministic ranking or Salesforce-owned fields. Broad Slack or Drive lookup is allowed only when the
+internal mode is `force` (the default); `auto` restricts to mapped deal rooms only.
 
 ---
 
@@ -107,9 +109,8 @@ deal rooms only.
 3. Ask: `/pipeline-triage` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
-Pipeline Read is self-contained. It carries its own copy of the deterministic core, so it runs without
-Deal Read installed. For single-deal depth, use
-[Deal Read](https://github.com/mattdweigand-sketch/deal-read).
+Pipeline Read is one surface in this shared repo. Shared deterministic mechanics live in `../core/`;
+for single-deal depth, use `../deal-read`.
 
 A full read loops the per-deal connectors `plan.py` reports in `per_deal_connectors`: Salesforce,
 Gmail, Google Calendar, and Zoom always, plus Slack and Google Drive whenever internal evidence is on. The default scope

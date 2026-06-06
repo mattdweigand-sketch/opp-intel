@@ -26,6 +26,11 @@
   },
   "calendar": {
     "_comment": "Read-only Google Calendar lookup. Used for historical meeting context and upcoming scheduled meetings. Hygiene remains Salesforce-only.",
+    "scoring": {
+      "_comment": "Deterministic Calendar flags. Only fire when Calendar coverage is available; connector gaps remain source gaps, not risk flags.",
+      "late_stage_days_to_close": 30,
+      "recent_stage_movement_days": 14
+    },
     "deal": {
       "history_days": 180,
       "future_days": 60,
@@ -52,8 +57,8 @@
     },
     "large_run_threshold": 15,
     "flag_severity": {
-      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage"],
-      "amber": ["stale_activity", "email_data_stale"]
+      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage", "calendar_no_upcoming_late_stage"],
+      "amber": ["stale_activity", "email_data_stale", "calendar_no_recent_meeting_after_stage_move", "calendar_next_meeting_no_buyer_attendees"]
     }
   },
   "forecast": {

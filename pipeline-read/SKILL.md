@@ -276,9 +276,13 @@ hygiene-flag precedence instead of risk severity, and each row carries `dominant
 `contacts`, `has_champion`, and `next_step_present`. Read these; do not re-rank, re-label, re-compare,
 or re-sum yourself. Ranking is severity of evidence (or hygiene precedence), never a win-probability —
 there are no predictive weights here by design (see `../core/config/risk-model.json`).
+Calendar flags only enter this ranking when Calendar coverage is available. Missing authorization,
+unavailable Calendar, or no confident deal match is an evidence gap, not a risk flag. Hygiene mode never
+uses Calendar flags.
 
 For each ranked deal, turn its `dominant_flag` and `risk_flags` into one cited risk line and one
-concrete next move, drawing the evidence from that deal's gather (call date, email date, or SF field).
+concrete next move, drawing the evidence from that deal's gather (call date, email date, Calendar event,
+or SF field).
 Where observed participants exceeded logged contact roles for a deal, you may add a one-line CRM-hygiene
 note, separate from the threading risk.
 

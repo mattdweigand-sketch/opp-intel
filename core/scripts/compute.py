@@ -19,12 +19,28 @@ Input shape (all dates ISO yyyy-mm-dd, all fields optional):
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from statistics import median
 
 
 def parse(d):
     return date.fromisoformat(d) if d else None
+
+
+def parse_calendar_date(value):
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
 
 
 def days_between(later, earlier):
@@ -35,11 +51,13 @@ def days_between(later, earlier):
 
 def main():
     snap = json.load(sys.stdin)
+    is_hygiene = bool(snap.get("hygiene"))
 
     model_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "core", "config", "risk-model.json"))
     with open(model_path) as f:
         model = json.load(f)
     thresholds = model["thresholds"]
+    calendar_scoring = model.get("calendar", {}).get("scoring", {})
     legal_not_started = {
         str(v).strip().lower() for v in model.get("legal_status", {}).get("not_started_values", [])
     }
@@ -49,6 +67,13 @@ def main():
     created = parse(opp.get("created_date"))
     close = parse(opp.get("close_date"))
     last_activity = parse(opp.get("last_activity_date"))
+    stage_name = str(opp.get("stage") or opp.get("stage_name") or opp.get("StageName") or "").strip().lower()
+    is_closed = bool(opp.get("is_closed") or opp.get("IsClosed")) or stage_name in {
+        "closed won",
+        "closed lost",
+        "won",
+        "lost",
+    }
 
     deal_age_days = days_between(today, created)
     days_to_close = days_between(close, today)
@@ -145,6 +170,74 @@ def main():
         and str(legal_status).strip().lower() in legal_not_started
     )
 
+    calendar_evidence = snap.get("calendar_evidence") or {}
+    calendar_coverage = calendar_evidence.get("coverage")
+    calendar_available = calendar_coverage == "available" and not is_hygiene
+    historical_meetings = calendar_evidence.get("historical_meetings") or []
+    upcoming_meetings = calendar_evidence.get("upcoming_meetings") or []
+    historical_dates = [
+        parse_calendar_date(m.get("start") or m.get("start_time"))
+        for m in historical_meetings
+        if isinstance(m, dict)
+    ]
+    upcoming_dates = [
+        parse_calendar_date(m.get("start") or m.get("start_time"))
+        for m in upcoming_meetings
+        if isinstance(m, dict)
+    ]
+    last_calendar_meeting = max((d for d in historical_dates if d), default=None)
+    next_calendar_meeting = min((d for d in upcoming_dates if d and d >= today), default=None)
+
+    def has_buyer_attendee(meeting):
+        buyer_attendees = meeting.get("buyer_attendees")
+        if isinstance(buyer_attendees, list):
+            return len([a for a in buyer_attendees if str(a).strip()]) > 0
+        attendees = meeting.get("attendees")
+        if not isinstance(attendees, list):
+            return False
+        for attendee in attendees:
+            if isinstance(attendee, dict):
+                if attendee.get("is_buyer") is True or attendee.get("external") is True:
+                    return True
+                if attendee.get("is_internal") is False:
+                    return True
+            elif str(attendee).strip():
+                return True
+        return False
+
+    next_meeting = None
+    if upcoming_meetings:
+        dated = [
+            (parse_calendar_date(m.get("start") or m.get("start_time")), m)
+            for m in upcoming_meetings
+            if isinstance(m, dict)
+        ]
+        future_dated = [(d, m) for d, m in dated if d and d >= today]
+        if future_dated:
+            next_meeting = sorted(future_dated, key=lambda item: item[0])[0][1]
+        elif dated:
+            next_meeting = dated[0][1]
+
+    calendar_no_upcoming_late_stage = (
+        calendar_available
+        and not is_closed
+        and days_to_close is not None
+        and 0 <= days_to_close <= calendar_scoring.get("late_stage_days_to_close", 30)
+        and not next_calendar_meeting
+    )
+    calendar_no_recent_meeting_after_stage_move = (
+        calendar_available
+        and stage_entered is not None
+        and days_in_current_stage is not None
+        and days_in_current_stage <= calendar_scoring.get("recent_stage_movement_days", 14)
+        and (last_calendar_meeting is None or last_calendar_meeting < stage_entered)
+    )
+    calendar_next_meeting_no_buyer_attendees = (
+        calendar_available
+        and next_meeting is not None
+        and not has_buyer_attendee(next_meeting)
+    )
+
     flags = {
         "stale_activity": days_since_last_activity is not None
         and days_since_last_activity > thresholds["stale_activity_days"],
@@ -160,9 +253,12 @@ def main():
         "economic_buyer_named": economic_buyer_named,
         "champion_identified": champion_identified,
         "paper_not_started": paper_not_started,
+        "calendar_no_upcoming_late_stage": calendar_no_upcoming_late_stage,
+        "calendar_no_recent_meeting_after_stage_move": calendar_no_recent_meeting_after_stage_move,
+        "calendar_next_meeting_no_buyer_attendees": calendar_next_meeting_no_buyer_attendees,
     }
 
-    if snap.get("hygiene"):
+    if is_hygiene:
         hygiene = model.get("hygiene", {})
         hygiene_stale_days = hygiene.get("stale_activity_days", 30)
         logged_roles = snap.get("logged_contact_roles")
@@ -197,6 +293,12 @@ def main():
                 "days_since_last_inbound": days_since_last_inbound,
                 "unanswered_rep_emails": unanswered_rep_emails,
                 "median_response_latency_days": median_response_latency_days,
+            },
+            "calendar": {
+                "coverage": calendar_coverage,
+                "last_meeting_date": last_calendar_meeting.isoformat() if last_calendar_meeting else None,
+                "next_meeting_date": next_calendar_meeting.isoformat() if next_calendar_meeting else None,
+                "source_gaps": sorted(set(calendar_evidence.get("source_gaps") or [])),
             },
             "flags": flags,
             "thresholds_used": thresholds,

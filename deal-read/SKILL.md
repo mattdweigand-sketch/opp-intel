@@ -146,7 +146,7 @@ and Drive entirely.
 **First, run `analyze.py` once.** Assemble the bundle and pipe it in:
 `python3 <skill-dir>/scripts/analyze.py < bundle.json`. The bundle is:
 `{"rep_name", "compute_input": {...}, "transcript_file": "<path or omit>", "prior_opps": [...],
-"internal_evidence": {...}}`.
+"calendar_evidence": {...}, "internal_evidence": {...}}`.
 For `compute_input`, do NOT pre-count `contacts_engaged` yourself. Pass `observed_participants` (the list
 of prospect-side people you saw: Zoom attendees and email senders/recipients on the prospect's domain)
 and `logged_contact_roles` (the count from `getRelatedRecords`). `compute.py` dedups the list and applies
@@ -156,7 +156,7 @@ pass `roles` (the `OpportunityContactRole.Role` values you saw), `opportunity.ec
 when `Decision_Maker__c` is populated or an Economic Buyer role exists), and `opportunity.legal_status`
 (the `Legal_Status__c` value). `compute.py` turns these into `flags.economic_buyer_named`,
 `flags.champion_identified`, and `flags.paper_not_started`. Everything below reads `analyze.py`'s output:
-`deal_metrics`, `call_execution`, `account_history`, and `internal_evidence`.
+`deal_metrics`, `call_execution`, `account_history`, `calendar_evidence`, and `internal_evidence`.
 
 Score the dimensions defined in `../core/config/risk-model.json` — read them from the file, do not work from a
 remembered list. For each dimension, compare what you observed against its `healthy` and `at_risk`
@@ -166,7 +166,9 @@ Blocked / Unknown) with one line of evidence, citing the source: call date, emai
 
 The `momentum` and `paper_timeline` dimensions are grounded by `deal_metrics`: use `flags.stale_activity`,
 `flags.single_threaded`, `flags.overdue_close`, `flags.close_date_slipped`, `flags.stalled_in_stage`,
-`flags.paper_not_started`, `days_since_last_activity` vs. `days_to_close`, `days_in_current_stage`, the
+`flags.paper_not_started`, `flags.calendar_no_upcoming_late_stage`,
+`flags.calendar_no_recent_meeting_after_stage_move`, `flags.calendar_next_meeting_no_buyer_attendees`,
+`days_since_last_activity` vs. `days_to_close`, `days_in_current_stage`, the
 `close_date_slippage` block (a deal pushed 2–3× is a much louder timeline risk than the current date
 alone), and the `email` latency block rather than eyeballing it. `flags.paper_not_started` is a status
 read of `Legal_Status__c`; weigh it against `days_to_close` (paper not started with a near close date is
@@ -175,6 +177,9 @@ the loud signal). `flags.single_threaded` reflects the
 won't false-positive on under-logged contact roles. If observed participants exceed the logged contact
 roles, surface that as a CRM-hygiene note in the brief (which roles to add), separate from the threading
 score.
+
+Calendar flags only count when Calendar coverage is available. If Calendar is unavailable or cannot match
+the deal, name the source gap and lower confidence as appropriate; do not invent meeting-cadence risk.
 
 Score `economic_buyer` against `flags.economic_buyer_named` and `champion_multithreading` against
 `flags.champion_identified` — both read the `OpportunityContactRole.Role` picklist, so they don't depend

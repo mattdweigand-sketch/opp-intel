@@ -44,6 +44,12 @@ def main():
                 "next_quarter" in scope["allowed_close_windows"])
     ok &= check("pipeline scope: JSQ fiscal year starts Feb 1",
                 scope["fiscal_year_start_month"] == 2 and scope["fiscal_year_start_day"] == 1)
+    severity = model["pipeline"]["flag_severity"]
+    ok &= check("pipeline severity: Calendar no-upcoming is red",
+                "calendar_no_upcoming_late_stage" in severity["red"])
+    ok &= check("pipeline severity: Calendar attendee/stage flags are amber",
+                "calendar_no_recent_meeting_after_stage_move" in severity["amber"]
+                and "calendar_next_meeting_no_buyer_attendees" in severity["amber"])
 
     amount = sf["amount_basis"]
     allowed = set(sf["opportunity_fields"]) | set(sf["pipeline_scope"]["fields"])

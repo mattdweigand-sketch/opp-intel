@@ -39,12 +39,13 @@ Required connectors:
 
 - Salesforce: opportunity truth, CRM fields, and hygiene mode
 - Gmail: email freshness and thread evidence
-- Google Calendar: historical and future meeting context
+- Google Calendar: historical and future meeting context, plus deterministic meeting-cadence flags
 - Zoom: current implemented call provider
 - Slack: mapped deal-room evidence
 - Google Drive: linked proposal and deal-room documents
 
 All source access should remain read-only. `deal-read` may only create a Gmail draft after explicit confirmation.
+If Google Calendar is unavailable, the repo records a source gap instead of creating Calendar risk flags.
 
 If Claude skills live somewhere else on your machine, set `CLAUDE_SKILLS_DIR`:
 

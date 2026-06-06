@@ -100,10 +100,16 @@ pipeline triage / forecast scoring
 │   ├── overdue_close        # close date is in the past
 │   ├── close_date_slipped   # close date has been pushed
 │   ├── single_threaded      # one or fewer engaged contacts
-│   └── stalled_in_stage     # stage age is past the configured threshold
+│   ├── stalled_in_stage     # stage age is past the configured threshold
+│   └── calendar_no_upcoming_late_stage
+│                            # late-stage deal has no future customer meeting
 ├── amber flags rank second
 │   ├── stale_activity       # Salesforce activity is stale
-│   └── email_data_stale     # email evidence lags latest known activity
+│   ├── email_data_stale     # email evidence lags latest known activity
+│   ├── calendar_no_recent_meeting_after_stage_move
+│   │                        # stage moved recently but no later customer meeting
+│   └── calendar_next_meeting_no_buyer_attendees
+│                            # next meeting has no visible buyer-side attendee
 ├── clean deals rank last
 └── tie-breakers
     ├── more active flags first
@@ -112,6 +118,8 @@ pipeline triage / forecast scoring
 ```
 
 The first active red flag becomes the dominant risk. If there is no red flag, the first active amber flag becomes the dominant risk.
+
+Calendar flags only count when Calendar coverage is available. If Calendar is not authorized, unavailable, or cannot match the deal, the repo records an evidence gap instead of creating risk.
 
 ```text
 forecast labels
