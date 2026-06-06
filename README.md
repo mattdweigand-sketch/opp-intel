@@ -90,11 +90,59 @@ The source boundary is intentional:
 - Slack and Drive evidence must stay bounded to mapped rooms and linked docs unless the pipeline mode explicitly asks for bounded fallback lookup.
 - Hygiene remains Salesforce-only.
 
-## Ranking model
+## Scoring system
 
-Risk ranking is deterministic. It uses current evidence, not predictive weights.
+The repo does not predict win probability. It sorts observed evidence into deterministic flags.
 
-Deals with red flags outrank deals with amber flags. Ties break on observed facts such as flag count, amount, and days to close. Forecast labels such as `keep`, `downgrade`, `inspect`, and `possible_upside` are posture labels, not CRM writebacks and not win-probability scores.
+### Triage and forecast
+
+Each deal gets boolean risk flags from the shared analysis scripts.
+
+Red flags:
+
+- `overdue_close`: close date is in the past.
+- `close_date_slipped`: close date has been pushed.
+- `single_threaded`: one or fewer engaged contacts.
+- `stalled_in_stage`: deal has sat in the current stage past the configured threshold.
+
+Amber flags:
+
+- `stale_activity`: Salesforce activity is stale.
+- `email_data_stale`: email evidence is older than the latest known activity.
+
+Ranking order:
+
+1. Red deals first, then amber deals, then clean deals.
+2. More active flags first.
+3. Larger amount first.
+4. Fewer days to close first.
+
+The first active red flag becomes the dominant risk. If there is no red flag, the first active amber flag becomes the dominant risk.
+
+Forecast labels are separate from ranking:
+
+- `downgrade`: commit deal with red risk.
+- `inspect`: stale evidence, unknown forecast category, missing amount, or ambiguous posture.
+- `possible_upside`: clean upside or pipeline deal.
+- `keep`: clean commit or upside deal.
+
+These labels are posture labels only. They are not CRM writebacks and not probability scores.
+
+### Hygiene
+
+`/pipeline-hygiene` uses a different scoring system. It is Salesforce-only and scores CRM record quality, not deal risk.
+
+Hygiene ranks by the first matching data gap in this order:
+
+1. `no_contact_roles`
+2. `single_threaded`
+3. `no_champion`
+4. `missing_amount`
+5. `missing_next_step`
+6. `stale_activity`
+7. `overdue_close`
+
+Ties break the same way: more gaps first, then larger amount, then fewer days to close.
 
 Do not add local win-probability modeling here. If that ever exists, it belongs in a separate pooled data product.
 
