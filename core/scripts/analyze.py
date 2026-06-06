@@ -94,7 +94,10 @@ def normalize_internal_evidence(raw):
         })
 
     signals = []
-    for sig in raw.get("signals") or []:
+    # Workflow-tool signals (derived from the Gmail workflow_signals sweep) are folded in
+    # alongside Slack/Drive signals. Same contract: a source_ref is required, or the entry is
+    # dropped. Internal-evidence lane only — never ranking or flag_severity.
+    for sig in (raw.get("signals") or []) + (raw.get("workflow_signals") or []):
         if not sig.get("source_ref"):
             continue
         signals.append({

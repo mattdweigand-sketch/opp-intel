@@ -147,6 +147,36 @@ def main():
     )
     latest_call = parse(snap.get("latest_call_date"))
     activity_anchor = max([d for d in (last_activity, latest_call) if d], default=None)
+
+    # Salesforce-as-witness coverage check. When Salesforce's LastActivityDate is
+    # materially newer than anything the connectors actually retrieved (newest email,
+    # last inbound, latest call), that contradiction means the connectors under-
+    # collected — not that the deal went quiet. Surface it as a coverage gap, never a
+    # risk flag: it drives confidence/blindness downstream, never ranking.
+    coverage_gaps = []
+    gathered_latest = max(
+        [d for d in (newest_email, last_inbound, latest_call) if d], default=None
+    )
+    activity_coverage_gap = (
+        last_activity is not None
+        and gathered_latest is not None
+        and (last_activity - gathered_latest).days > thresholds["freshness_gap_days"]
+    )
+    if activity_coverage_gap:
+        coverage_gaps.append("activity_coverage_gap")
+
+    # Which date won activity_anchor — labels the freshness anchor for downstream rollup.
+    if activity_anchor is None:
+        activity_anchor_source = None
+    elif activity_anchor == latest_call:
+        activity_anchor_source = "call"
+    elif activity_anchor in (newest_email, last_inbound):
+        activity_anchor_source = "email"
+    elif activity_anchor == last_activity:
+        activity_anchor_source = "activity"
+    else:
+        activity_anchor_source = None
+
     email_data_stale = activity_anchor is not None and (
         newest_email is None
         or (activity_anchor - newest_email).days > thresholds.get("freshness_gap_days", 5)
@@ -285,6 +315,7 @@ def main():
             "freshness": {
                 "newest_email_date": newest_email.isoformat() if newest_email else None,
                 "activity_anchor_date": activity_anchor.isoformat() if activity_anchor else None,
+                "activity_anchor_source": activity_anchor_source,
                 "last_outbound_date": last_outbound.isoformat() if last_outbound else None,
             },
             "email": {
@@ -301,6 +332,7 @@ def main():
                 "source_gaps": sorted(set(calendar_evidence.get("source_gaps") or [])),
             },
             "flags": flags,
+            "coverage_gaps": coverage_gaps,
             "thresholds_used": thresholds,
         },
         sys.stdout,

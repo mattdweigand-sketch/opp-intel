@@ -157,8 +157,12 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    - `internal=auto`: use only mapped Slack deal rooms from the configured Salesforce mapping fields.
      If no room is mapped, record `deal_room_missing`; do not broad-search Slack.
    - `internal=off`: emit and gather no Slack or linked-doc evidence.
-   - `internal=force`: bounded fallback lookup by account/opportunity/internal hints is allowed. Keep the
-     message window and doc count within the plan output.
+   - `internal=force`: execute the `steps` array `plan.py` emits — **in order, no skipping**:
+     **Step 1** — call `slack_search_channels` with each term, including `private_channel`. If any
+     channel whose name matches a term is found, read up to `max_messages` from it and set
+     `coverage=found`; do **not** run step 2. **Step 2** — only if step 1 found no named channel: call
+     `slack_search_public_and_private` with the terms to surface signals in existing channels; set
+     `coverage=checked_no_match`. Keep message window and doc count within the plan output.
    - Linked Google Drive proposal docs are read only when linked from the mapped room or explicit deal
      context. Do not broad-search Drive.
 2. **Read full email threads; keep Zoom at metadata only.** Every structural flag (slippage, stall,

@@ -104,8 +104,17 @@
       "exec_alignment",
       "implementation_risk",
       "pricing_approval",
-      "competitive_context"
-    ]
+      "competitive_context",
+      "clm_stage",
+      "legal_task_stage"
+    ],
+    "workflow_tools": [
+      {"domain": "ironcladapp.com", "signal_type": "clm_stage"},
+      {"domain": "lexion.ai", "signal_type": "legal_task_stage"},
+      {"domain": "gong.io", "signal_type": "call_activity"},
+      {"domain": "scratchpad.com", "signal_type": "crm_autoupdate"}
+    ],
+    "_workflow_tools_comment": "Registry of internal SaaS workflow-notification sender domains (CLM, NDA/legal, call intel, CRM auto-update) that live in the rep's own inbox and carry deal-stage truth. These feed the internal-evidence lane ONLY (confidence, source gaps, risk notes, next-move wording) and NEVER deterministic risk ranking or flag_severity. Each derived signal must carry a source_ref like any other internal-evidence signal."
   },
   "dimensions": [
     {

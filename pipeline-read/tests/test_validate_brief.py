@@ -73,6 +73,58 @@ def main():
     rc, out = run("Confidence: High\n\nComputed inputs:\n```json\n" + json.dumps(no_schema) + "\n```")
     ok &= check("missing schema fails", rc == 1 and "schema_version" in out)
 
+    # Coverage gaps (Fix 4): a connector under-collected. compute.py reports it as a
+    # coverage_gap; rollup.py surfaces it in source_gaps + portfolio.coverage_gap_deals.
+    def gap_footer():
+        obj = {
+            "schema_version": "pipeline-read.computed-inputs.v1",
+            "run": {"mode": "triage"},
+            "portfolio": {"deal_count": 1, "stale_data_deals": 0, "coverage_gap_deals": ["Acme"]},
+            "source_gaps": ["activity_coverage_gap"],
+            "ranking": [{"name": "Acme", "severity_tier": "amber", "risk_flags": ["single_threaded"],
+                         "coverage_gaps": ["activity_coverage_gap"]}],
+        }
+        return "```json\n" + json.dumps(obj) + "\n```"
+
+    rc, out = run("Confidence: Medium, partial coverage.\n\nComputed inputs:\n" + gap_footer())
+    ok &= check("coverage gap without blind section fails",
+                rc == 1 and "Where you're blind" in out)
+
+    rc, _ = run("Confidence: Medium, partial coverage.\n\nWhere you're blind: Acme activity data is thin.\n\n"
+                "Computed inputs:\n" + gap_footer())
+    ok &= check("coverage gap with blind section passes", rc == 0)
+
+    rc, out = run("Confidence: High, all current.\n\nWhere you're blind: Acme activity data is thin.\n\n"
+                  "Computed inputs:\n" + gap_footer())
+    ok &= check("High + coverage gap fails", rc == 1 and "coverage gap" in out.lower())
+
+    # NW1 anchor guard: a deal flagged email_data_stale must cite its last_touch date.
+    def stale_anchor_footer(last_touch="2026-05-26"):
+        obj = {
+            "schema_version": "pipeline-read.computed-inputs.v1",
+            "run": {"mode": "triage"},
+            "portfolio": {"deal_count": 1, "stale_data_deals": 1},
+            "ranking": [{"name": "Northwind", "severity_tier": "red",
+                         "risk_flags": ["email_data_stale"], "last_touch": last_touch,
+                         "last_touch_source": "call"}],
+        }
+        return "```json\n" + json.dumps(obj) + "\n```"
+
+    blind = "Where you're blind: Northwind email view is lagging.\n\n"
+    rc, out = run("Confidence: Medium, partial coverage.\n\n" + blind +
+                  "Northwind has gone quiet since March.\n\nComputed inputs:\n" + stale_anchor_footer())
+    ok &= check("stale deal missing last_touch date fails",
+                rc == 1 and "2026-05-26" in out)
+
+    rc, _ = run("Confidence: Medium, partial coverage.\n\n" + blind +
+                "Northwind's true last touch was a 2026-05-26 call.\n\nComputed inputs:\n" + stale_anchor_footer())
+    ok &= check("stale deal citing last_touch date passes", rc == 0)
+
+    # Lenient: a stale-flagged row with null last_touch (older input) skips the anchor check.
+    rc, _ = run("Confidence: Medium, partial coverage.\n\n" + blind +
+                "Computed inputs:\n" + stale_anchor_footer(last_touch=None))
+    ok &= check("stale deal with null last_touch skips anchor check", rc == 0)
+
     # Hygiene mode: requires the hygiene sections, not the forecast ones, and a stale-data
     # row in another mode's footer never trips the High-confidence guard here.
     hyg_footer = "```json\n" + json.dumps({

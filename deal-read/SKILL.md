@@ -118,8 +118,11 @@ user states otherwise; if genuinely unknown, ask once.
 
 After Gmail, run `plan.py` again with the full deal context. Execute the `internal_evidence.slack`
 instructions it returns when a mapped deal room exists. If no room is mapped, `plan.py` reports the
-source gap; pass `"internal": "force"` only when you intentionally want bounded fallback search in
-Slack by account/opp name.
+source gap; pass `"internal": "force"` only when you intentionally want bounded fallback search. In force
+mode, execute the `steps` array `plan.py` emits **in order**: step 1 calls `slack_search_channels`
+(include `private_channel`) with the account/opp name terms — if a named channel matches, read from
+it (`coverage=found`) and stop; step 2 only runs if no named channel was found, calling
+`slack_search_public_and_private` for message signals (`coverage=checked_no_match`).
 
 Read linked Google Drive proposal docs only when they are linked from the mapped room or explicit deal
 context. Add Slack findings, linked-doc coverage, and proposal-doc findings to the `analyze.py` bundle

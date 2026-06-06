@@ -79,7 +79,8 @@
       "single_threaded": 1,
       "slipped_or_overdue": 1,
       "stalled_in_stage": 0,
-      "stale_data_deals": 1
+      "stale_data_deals": 1,
+      "coverage_gap_deals": []
     },
     "ranking": [
       {
@@ -96,7 +97,15 @@
         "dominant_flag": "overdue_close",
         "severity_tier": "red",
         "flag_count": 4,
-        "risk_flags": ["overdue_close", "close_date_slipped", "stale_activity", "email_data_stale"]
+        "risk_flags": [
+          "overdue_close",
+          "close_date_slipped",
+          "stale_activity",
+          "email_data_stale"
+        ],
+        "last_touch": null,
+        "last_touch_source": null,
+        "coverage_gaps": []
       },
       {
         "opportunity_id": null,
@@ -112,21 +121,46 @@
         "dominant_flag": "single_threaded",
         "severity_tier": "red",
         "flag_count": 2,
-        "risk_flags": ["single_threaded", "stale_activity"]
+        "risk_flags": [
+          "single_threaded",
+          "stale_activity"
+        ],
+        "last_touch": null,
+        "last_touch_source": null,
+        "coverage_gaps": []
       }
     ],
+    "source_gaps": [],
     "severity_tiers_used": {
-      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage", "calendar_no_upcoming_late_stage"],
-      "amber": ["stale_activity", "email_data_stale", "calendar_no_recent_meeting_after_stage_move", "calendar_next_meeting_no_buyer_attendees"]
+      "red": [
+        "overdue_close",
+        "close_date_slipped",
+        "single_threaded",
+        "stalled_in_stage",
+        "calendar_no_upcoming_late_stage"
+      ],
+      "amber": [
+        "stale_activity",
+        "email_data_stale",
+        "calendar_no_recent_meeting_after_stage_move",
+        "calendar_next_meeting_no_buyer_attendees"
+      ]
     },
     "forecast": {
       "amount_basis": "acv",
       "amount_field": "Added_ARR__c",
       "posture": "conservative",
       "category_convention": {
-        "commit": ["Commit"],
-        "upside": ["Best Case", "Upside"],
-        "pipeline": ["Pipeline"]
+        "commit": [
+          "Commit"
+        ],
+        "upside": [
+          "Best Case",
+          "Upside"
+        ],
+        "pipeline": [
+          "Pipeline"
+        ]
       },
       "category_rollup": {
         "commit": {
@@ -157,7 +191,12 @@
           "current_category": "Best Case",
           "category_group": "upside",
           "recommendation": "inspect",
-          "reason_codes": ["close_date_slipped", "email_data_stale", "overdue_close", "stale_activity"],
+          "reason_codes": [
+            "close_date_slipped",
+            "email_data_stale",
+            "overdue_close",
+            "stale_activity"
+          ],
           "confidence": "Low"
         },
         {
@@ -166,7 +205,10 @@
           "current_category": "Commit",
           "category_group": "commit",
           "recommendation": "inspect",
-          "reason_codes": ["single_threaded", "stale_activity"],
+          "reason_codes": [
+            "single_threaded",
+            "stale_activity"
+          ],
           "confidence": "Medium"
         }
       ]

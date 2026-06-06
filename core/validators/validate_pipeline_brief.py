@@ -67,6 +67,19 @@ def any_deal_stale(computed):
     return bool(computed.get("portfolio", {}).get("stale_data_deals"))
 
 
+def any_coverage_gap(computed):
+    """True when the roll-up reports any connector coverage gap. Backward compatible:
+    older inputs without coverage_gaps/coverage_gap_deals read as no gap."""
+    if computed.get("source_gaps"):
+        return True
+    if (computed.get("portfolio") or {}).get("coverage_gap_deals"):
+        return True
+    for row in computed.get("ranking", []) or []:
+        if row.get("coverage_gaps"):
+            return True
+    return False
+
+
 def forecast_mode(text, computed):
     run_mode = (computed.get("run") or {}).get("mode") if computed else None
     return run_mode == "forecast" or bool(computed and computed.get("forecast")) or "Forecast Read" in text
@@ -123,6 +136,34 @@ def internal_sources_have_refs(computed):
     return errors
 
 
+def prose_text(text):
+    """Brief text with the ```json Computed inputs fences stripped, so a date check tests
+    the narrative rather than the audit JSON (where last_touch always literally appears)."""
+    return JSON_BLOCK_RE.sub("", text)
+
+
+def stale_anchor_errors(text, computed):
+    """NW1 guard: a deal flagged email_data_stale must cite its true last-touch date in the
+    brief prose, so it can't be narrated as gone quiet when a later call exists. Lenient:
+    skip rows whose last_touch is null/absent (older inputs lack the field)."""
+    errors = []
+    prose = prose_text(text)
+    for row in computed.get("ranking", []) or []:
+        if "email_data_stale" not in (row.get("risk_flags") or []):
+            continue
+        last_touch = row.get("last_touch")
+        if not last_touch:
+            continue
+        if str(last_touch) not in prose:
+            name = row.get("name") or row.get("deal") or "a stale-flagged deal"
+            errors.append(
+                f"Deal '{name}' is flagged email_data_stale but its last-touch date "
+                f"{last_touch} is not cited in the brief. Cite the real last touch instead "
+                f"of narrating it as gone quiet."
+            )
+    return errors
+
+
 def validate(text):
     errors = []
 
@@ -149,14 +190,27 @@ def validate(text):
 
     is_forecast = forecast_mode(text, computed)
     is_hygiene = hygiene_mode(text, computed)
+    coverage_gap = any_coverage_gap(computed)
     if confidence == "High" and any_deal_stale(computed):
         errors.append(
             "Confidence is High but the roll-up shows deals with stale email data. Lower it "
             "and name which deals you could not see clearly."
         )
+    if confidence == "High" and coverage_gap:
+        errors.append(
+            "Confidence is High but the roll-up reports coverage gaps (connectors under-collected). "
+            "Lower it and name what you could not see."
+        )
 
-    if not is_forecast and not is_hygiene and any_deal_stale(computed) and not has_section(text, "Where you're blind"):
-        errors.append("Where you're blind section missing while stale or thin data exists.")
+    if (
+        not is_forecast
+        and not is_hygiene
+        and (any_deal_stale(computed) or coverage_gap)
+        and not has_section(text, "Where you're blind")
+    ):
+        errors.append("Where you're blind section missing while stale data or coverage gaps exist.")
+
+    errors.extend(stale_anchor_errors(text, computed))
 
     if is_hygiene:
         for heading in HYGIENE_SECTIONS:

@@ -6,7 +6,10 @@
     "opp_id": "006X",
     "account_id": "001X",
     "account_name": "Providence Investments",
-    "contact_emails": ["a@x.com", "b@x.com"],
+    "contact_emails": [
+      "a@x.com",
+      "b@x.com"
+    ],
     "created_date": "2026-05-21",
     "today": "2026-06-03",
     "slack_deal_room": "C123"
@@ -20,7 +23,14 @@
         "sobject-name": "Opportunity",
         "id": "006X",
         "relationship-path": "OpportunityContactRoles",
-        "read_fields": ["Id", "Name", "Title", "Email", "Role", "IsPrimary"]
+        "read_fields": [
+          "Id",
+          "Name",
+          "Title",
+          "Email",
+          "Role",
+          "IsPrimary"
+        ]
       },
       "tasks": "SELECT Id, Subject, ActivityDate, Status, TaskSubtype FROM Task WHERE WhatId = '006X' ORDER BY ActivityDate DESC LIMIT 25",
       "history": "SELECT Id, StageName, CloseDate, CreatedDate FROM OpportunityHistory WHERE OpportunityId = '006X' ORDER BY CreatedDate ASC",
@@ -28,7 +38,9 @@
     },
     "gmail": {
       "sent_freshness": "in:sent newer_than:90d",
-      "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d"
+      "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d",
+      "workflow_signals": "from:(ironcladapp.com OR lexion.ai OR gong.io OR scratchpad.com) (\"Providence Investments\") newer_than:90d",
+      "_workflow_note": "Read these workflow-tool notifications and map each sender domain to its signal_type via internal_evidence.workflow_tools in risk-model.json (e.g. ironcladapp.com -> clm_stage). Emit each as an internal_evidence signal with a source_ref (the message id/link). Internal-evidence lane only: these inform confidence, source gaps, risk notes, and next-move wording, never Salesforce-owned truth, ranking, or flag_severity."
     },
     "zoom": {
       "q": "Providence Investments",
@@ -39,8 +51,13 @@
     "calendar": {
       "source": "google_calendar",
       "query": {
-        "terms": ["Providence Investments"],
-        "attendees": ["a@x.com", "b@x.com"]
+        "terms": [
+          "Providence Investments"
+        ],
+        "attendees": [
+          "a@x.com",
+          "b@x.com"
+        ]
       },
       "history": {
         "from": "2026-05-21",
@@ -52,7 +69,14 @@
         "to": "next 60 days",
         "max_events": 10
       },
-      "read": ["title", "time", "attendees", "organizer", "conference_link", "description_snippet"],
+      "read": [
+        "title",
+        "time",
+        "attendees",
+        "organizer",
+        "conference_link",
+        "description_snippet"
+      ],
       "read_only": true
     },
     "internal_evidence": {
@@ -70,22 +94,33 @@
         "exec_alignment",
         "implementation_risk",
         "pricing_approval",
-        "competitive_context"
+        "competitive_context",
+        "clm_stage",
+        "legal_task_stage"
       ],
       "broad_search_allowed": false,
       "slack": {
         "query_type": "mapped_deal_room",
         "room": "C123",
-        "read": ["recent_messages", "pinned_items", "bookmarks"],
+        "read": [
+          "recent_messages",
+          "pinned_items",
+          "bookmarks"
+        ],
         "max_messages": 80,
         "broad_search_allowed": false
       },
       "linked_docs": {
         "source": "google_drive",
         "relationship": "linked_from_deal_room",
-        "allowed_sources": ["google_drive"],
+        "allowed_sources": [
+          "google_drive"
+        ],
         "max_docs": 5,
-        "allowed_when": ["linked_from_deal_room", "explicit_deal_context"]
+        "allowed_when": [
+          "linked_from_deal_room",
+          "explicit_deal_context"
+        ]
       }
     }
   }

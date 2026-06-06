@@ -94,6 +94,26 @@ def main():
     ok &= check("analyze: unavailable linked doc becomes gap",
                 "linked_doc_unavailable" in out_ie["source_gaps"])
 
+    # --- Workflow-tool signals: source-backed entry survives normalization; bare one is dropped.
+    wf = run_script(ANALYZE, {
+        "compute_input": {"today": "2026-06-05"},
+        "internal_evidence": {
+            "mode": "force",
+            "workflow_signals": [
+                {"type": "clm_stage", "summary": "Ironclad order form at Sign stage.",
+                 "source_ref": "gmail/msg/abc123", "confidence": "High"},
+                {"type": "call_activity", "summary": "No source ref, must be dropped."},
+            ],
+        },
+    })
+    wf_signals = wf["internal_evidence"]["signals"]
+    ok &= check("analyze: workflow signal with source_ref preserved",
+                [s["type"] for s in wf_signals] == ["clm_stage"])
+    ok &= check("analyze: workflow signal source_ref carried through",
+                wf_signals[0]["source_ref"] == "gmail/msg/abc123")
+    ok &= check("analyze: workflow signal without source_ref dropped",
+                all(s["type"] != "call_activity" for s in wf_signals))
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

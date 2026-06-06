@@ -21,7 +21,14 @@
       "close_on_or_before": "2026-07-31"
     },
     "large_run_threshold": 15,
-    "per_deal_connectors": ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"],
+    "per_deal_connectors": [
+      "Salesforce",
+      "Gmail",
+      "Google Calendar",
+      "Zoom",
+      "Slack",
+      "Google Drive"
+    ],
     "internal_evidence": {
       "mode": "force",
       "window_days": 30,
@@ -37,7 +44,9 @@
         "exec_alignment",
         "implementation_risk",
         "pricing_approval",
-        "competitive_context"
+        "competitive_context",
+        "clm_stage",
+        "legal_task_stage"
       ],
       "broad_search_allowed": true,
       "slack": {
@@ -51,9 +60,14 @@
       "linked_docs": {
         "source": "google_drive",
         "relationship": "linked_from_deal_room",
-        "allowed_sources": ["google_drive"],
+        "allowed_sources": [
+          "google_drive"
+        ],
         "max_docs": 5,
-        "allowed_when": ["linked_from_deal_room", "explicit_deal_context"]
+        "allowed_when": [
+          "linked_from_deal_room",
+          "explicit_deal_context"
+        ]
       }
     }
   }

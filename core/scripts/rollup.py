@@ -75,6 +75,28 @@ def days_to_close(deal):
     return (deal.get("analyze_output") or {}).get("deal_metrics", {}).get("days_to_close")
 
 
+def deal_metrics(deal):
+    """The deal_metrics dict from this deal's analyze.py output (empty if absent)."""
+    return (deal.get("analyze_output") or {}).get("deal_metrics", {}) or {}
+
+
+def coverage_gaps_for(deal):
+    """Per-deal coverage_gaps list (compute.py emits these; default []). Metadata only —
+    coverage gaps are NOT risk flags and never affect ranking or severity."""
+    gaps = deal_metrics(deal).get("coverage_gaps")
+    return [str(g) for g in gaps] if isinstance(gaps, list) else []
+
+
+def freshness_for(deal):
+    return deal_metrics(deal).get("freshness", {}) or {}
+
+
+def last_touch_for(deal):
+    """activity_anchor_date / activity_anchor_source, null-safe (None when absent)."""
+    freshness = freshness_for(deal)
+    return freshness.get("activity_anchor_date"), freshness.get("activity_anchor_source")
+
+
 def classify(deal, severity):
     """Return (dominant_flag, tier, true_risk_flags) for one deal."""
     flags = deal_flags(deal)
@@ -173,6 +195,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
         acv = money_value(first_present(deal.get("acv"), deal.get("Added_ARR__c"), deal.get("Calculated_ACV__c"), amount))
         category = category_value(deal, category_field)
         group = category_group(category, convention)
+        last_touch, last_touch_source = last_touch_for(deal)
         rows.append({
             "opportunity_id": stable_id(deal),
             "name": first_present(deal.get("name"), deal.get("Name")),
@@ -188,6 +211,9 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
             "severity_tier": tier,
             "flag_count": len(true_flags),
             "risk_flags": true_flags,
+            "last_touch": last_touch,
+            "last_touch_source": last_touch_source,
+            "coverage_gaps": coverage_gaps_for(deal),
         })
     return rows
 
@@ -203,6 +229,24 @@ def sort_ranking(rows):
             r["days_to_close"] if r["days_to_close"] is not None else big,
         ),
     )
+
+
+def coverage_gap_deals_for(deals):
+    """Sorted names of deals carrying any coverage_gap. Pure metadata."""
+    names = [
+        first_present(d.get("name"), d.get("Name"))
+        for d in deals
+        if coverage_gaps_for(d)
+    ]
+    return sorted(n for n in names if n)
+
+
+def aggregate_coverage_gaps(deals):
+    """Union of every in-scope deal's deal_metrics.coverage_gaps (dedup, sorted)."""
+    gaps = set()
+    for d in deals:
+        gaps.update(coverage_gaps_for(d))
+    return sorted(gaps)
 
 
 def portfolio_for(deals, rows):
@@ -229,6 +273,7 @@ def portfolio_for(deals, rows):
         "slipped_or_overdue": count(lambda f: f.get("close_date_slipped") or f.get("overdue_close")),
         "stalled_in_stage": count(lambda f: f.get("stalled_in_stage")),
         "stale_data_deals": count(lambda f: f.get("email_data_stale")),
+        "coverage_gap_deals": coverage_gap_deals_for(deals),
     }
 
 
@@ -676,6 +721,7 @@ def main():
                 "window": bundle.get("window"),
                 "portfolio": portfolio,
                 "ranking": ranking,
+                "source_gaps": aggregate_coverage_gaps(deals),
                 "severity_tiers_used": severity,
             }
 

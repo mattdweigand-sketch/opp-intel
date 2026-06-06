@@ -5,7 +5,9 @@
     "rep_name": "Matthew Weigand",
     "compute_input": {
       "today": "2026-06-03",
-      "opportunity": { "last_activity_date": "2026-06-03" },
+      "opportunity": {
+        "last_activity_date": "2026-06-03"
+      },
       "contacts_engaged": 2
     },
     "prior_opps": [
@@ -47,7 +49,9 @@
         {
           "title": "Discovery",
           "start": "2026-05-20T15:00:00Z",
-          "attendees": ["buyer@example.com"],
+          "attendees": [
+            "buyer@example.com"
+          ],
           "source_ref": "calendar:event-1"
         }
       ],
@@ -74,6 +78,7 @@
       "freshness": {
         "newest_email_date": null,
         "activity_anchor_date": "2026-06-03",
+        "activity_anchor_source": "activity",
         "last_outbound_date": null
       },
       "email": {
@@ -104,6 +109,7 @@
         "calendar_no_recent_meeting_after_stage_move": false,
         "calendar_next_meeting_no_buyer_attendees": true
       },
+      "coverage_gaps": [],
       "thresholds_used": {
         "email_window_days": 90,
         "stale_activity_days": 14,
@@ -131,7 +137,9 @@
           "title": "Discovery",
           "start": "2026-05-20T15:00:00Z",
           "end": null,
-          "attendees": ["buyer@example.com"],
+          "attendees": [
+            "buyer@example.com"
+          ],
           "organizer": null,
           "conference_link": null,
           "source_ref": "calendar:event-1"

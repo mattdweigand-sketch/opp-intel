@@ -147,6 +147,31 @@ def main():
     ok &= check("internal force: broad search allowed only there",
                 force["internal_evidence"]["slack"]["broad_search_allowed"] is True)
 
+    # --- Workflow-tool inbox sweep: Gmail query targets known notification senders scoped by name.
+    eca = run({"deal_name": "Emerald City Associates", "account_name": "Emerald City Associates",
+               "today": "2026-06-04"})
+    ws = eca["gmail"].get("workflow_signals", "")
+    ok &= check("workflow: workflow_signals query emitted", bool(ws))
+    ok &= check("workflow: targets ironclad sender domain", "ironcladapp.com" in ws)
+    ok &= check("workflow: scoped to the account name", "Emerald City" in ws)
+    ok &= check("workflow: keeps existing gmail keys intact",
+                eca["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("workflow: registry-mapping note present", "_workflow_note" in eca["gmail"])
+
+    # No scoping term => no workflow query (backward compatible).
+    no_scope = run({"opp_id": "006X", "today": "2026-06-04"})
+    ok &= check("workflow: no scope term means no workflow_signals",
+                "workflow_signals" not in no_scope["gmail"])
+
+    # risk-model.json carries the workflow_tools registry including the ironclad domain.
+    model_path = os.path.join(HERE, "..", "..", "core", "config", "risk-model.json")
+    with open(model_path) as f:
+        rm = json.load(f)
+    wt = rm["internal_evidence"]["workflow_tools"]
+    ok &= check("workflow: registry present in risk-model.json", isinstance(wt, list) and len(wt) > 0)
+    ok &= check("workflow: registry includes ironclad domain",
+                any(e.get("domain") == "ironcladapp.com" and e.get("signal_type") == "clm_stage" for e in wt))
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

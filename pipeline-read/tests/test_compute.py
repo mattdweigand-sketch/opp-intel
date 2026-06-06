@@ -202,6 +202,57 @@ def main():
     ok &= check("hygiene clean: missing_next_step False", r["flags"]["missing_next_step"] is False)
     ok &= check("hygiene clean: stale_activity False", r["flags"]["stale_activity"] is False)
 
+    # Fixture 8: Salesforce-as-witness coverage gap. SF LastActivityDate is materially
+    # newer than anything the connectors retrieved (newest email 3/30, no call), so the
+    # connectors under-collected. Surfaced as a coverage gap, never a risk flag.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "emails": [
+            {"direction": "out", "date": "2026-03-30"},
+        ],
+    })
+    ok &= check("witness: activity_coverage_gap fires",
+                "activity_coverage_gap" in r["coverage_gaps"])
+    ok &= check("witness: coverage_gap is not a risk flag",
+                "activity_coverage_gap" not in r["flags"])
+
+    # Control: SF activity within 5 days of newest gathered — no coverage gap.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "emails": [
+            {"direction": "out", "date": "2026-06-02"},
+        ],
+    })
+    ok &= check("witness control: no coverage gap",
+                "activity_coverage_gap" not in r["coverage_gaps"])
+
+    # Anchor source = call (NW1-like): a call newer than the newest email wins the anchor.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-05-26"},
+        "latest_call_date": "2026-05-26",
+        "emails": [
+            {"direction": "in", "date": "2026-03-23"},
+        ],
+    })
+    ok &= check("witness: activity_anchor_source call",
+                r["freshness"]["activity_anchor_source"] == "call")
+
+    # Normal fresh case: coverage_gaps empty, no coverage gap leaks into flags.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-05"},
+        "emails": [
+            {"direction": "out", "date": "2026-06-04"},
+            {"direction": "in", "date": "2026-06-05"},
+        ],
+    })
+    ok &= check("witness fresh: coverage_gaps empty", r["coverage_gaps"] == [])
+    ok &= check("witness fresh: activity_coverage_gap absent from flags",
+                "activity_coverage_gap" not in r["flags"])
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

@@ -84,6 +84,51 @@ def main():
     empty = run({"deals": []})
     ok &= check("empty: pct is None, no crash", empty["portfolio"]["acv_at_risk_pct"] is None)
 
+    # Coverage gaps: aggregate into top-level source_gaps + portfolio.coverage_gap_deals,
+    # carry last_touch/last_touch_source on rows, and never reorder the ranking.
+    def gap_deal(name, acv, dtc, flags, coverage_gaps=None, anchor=None, anchor_src=None):
+        d = deal(name, acv, dtc, flags)
+        m = d["analyze_output"]["deal_metrics"]
+        if coverage_gaps is not None:
+            m["coverage_gaps"] = coverage_gaps
+        if anchor is not None or anchor_src is not None:
+            m["freshness"] = {"activity_anchor_date": anchor, "activity_anchor_source": anchor_src}
+        return d
+
+    base_deals = [
+        gap_deal("Northwind", 120000, 16, {"single_threaded": True, "email_data_stale": True},
+                 anchor="2026-05-26", anchor_src="call"),
+        gap_deal("Acme", 80000, 10, {"overdue_close": True}),
+        gap_deal("Globex", 50000, 24, {}),
+    ]
+    no_gap = run({"mode": "triage", "deals": base_deals})
+    with_gap = run({"mode": "triage", "deals": [
+        gap_deal("Northwind", 120000, 16, {"single_threaded": True, "email_data_stale": True},
+                 coverage_gaps=["activity_coverage_gap"], anchor="2026-05-26", anchor_src="call"),
+        gap_deal("Acme", 80000, 10, {"overdue_close": True}),
+        gap_deal("Globex", 50000, 24, {}),
+    ]})
+
+    ok &= check("coverage gap: top-level source_gaps carries the gap",
+                "activity_coverage_gap" in (with_gap.get("source_gaps") or []))
+    ok &= check("coverage gap: portfolio.coverage_gap_deals lists the deal",
+                with_gap["portfolio"]["coverage_gap_deals"] == ["Northwind"])
+    nw = next(r for r in with_gap["ranking"] if r["name"] == "Northwind")
+    ok &= check("coverage gap: ranked row carries last_touch", nw["last_touch"] == "2026-05-26")
+    ok &= check("coverage gap: ranked row carries last_touch_source", nw["last_touch_source"] == "call")
+    ok &= check("coverage gap: clean deal has empty coverage_gaps on row",
+                next(r for r in with_gap["ranking"] if r["name"] == "Acme")["coverage_gaps"] == [])
+    ok &= check("coverage gap: ranking order unchanged vs no-gap bundle",
+                [r["name"] for r in with_gap["ranking"]] == [r["name"] for r in no_gap["ranking"]])
+
+    # Backward compat: a bundle with no coverage_gaps/freshness yields empty gaps + null last_touch.
+    legacy = run({"mode": "triage", "deals": [deal("Legacy", 10000, 5, {"single_threaded": True})]})
+    ok &= check("legacy: source_gaps empty when no coverage_gaps", legacy.get("source_gaps") == [])
+    ok &= check("legacy: coverage_gap_deals empty", legacy["portfolio"]["coverage_gap_deals"] == [])
+    ok &= check("legacy: last_touch null when freshness absent",
+                legacy["ranking"][0]["last_touch"] is None
+                and legacy["ranking"][0]["last_touch_source"] is None)
+
     # Mode contract: an explicit triage bundle stays triage and emits no forecast block,
     # even when amount_basis is present. (amount_basis must not infer forecast.)
     triage = run({"mode": "triage", "amount_basis": "acv",

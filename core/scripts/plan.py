@@ -208,6 +208,24 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
 
     out["slack"] = {
         "query_type": "bounded_fallback_lookup",
+        "steps": [
+            {
+                "step": 1,
+                "action": "slack_search_channels",
+                "terms": account_or_deal,
+                "channel_types": "public_channel,private_channel",
+                "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
+                "on_no_match": "proceed to step 2",
+            },
+            {
+                "step": 2,
+                "action": "slack_search_public_and_private",
+                "terms": account_or_deal,
+                "window_days": out["window_days"],
+                "on_match": "capture signals with source_refs; set coverage=checked_no_match",
+                "on_no_match": "set coverage=checked_no_match; no signals",
+            },
+        ],
         "terms": account_or_deal,
         "window_days": out["window_days"],
         "max_messages": out["max_messages"],
@@ -410,6 +428,27 @@ def deal_plan(ctx, profile="pipeline"):
             "and re-run thread_search: from:(<emails>) OR to:(<emails>) newer_than:{window}d. "
             "Read full thread bodies, not metadata only."
         ).replace("{window}", str(window))
+
+    # Workflow-tool inbox sweep: internal SaaS notifications (CLM, NDA/legal, call intel,
+    # CRM auto-update) live in the rep's own Gmail under the vendors' sender domains, scoped
+    # to the account/deal name. They never match the prospect-domain thread_search, so target
+    # them explicitly. Internal-evidence lane only — never ranking or flag_severity.
+    workflow_tools = (model.get("internal_evidence", {}) or {}).get("workflow_tools", [])
+    scope_terms = dedupe([ctx.get("account_name"), ctx.get("deal_name")])
+    domains = dedupe([wt.get("domain") for wt in workflow_tools if wt.get("domain")])
+    if scope_terms and domains:
+        from_clause = " OR ".join(domains)
+        term_clause = " OR ".join('"%s"' % t.replace('"', "") for t in scope_terms)
+        gmail["workflow_signals"] = (
+            'from:(' + from_clause + ') (' + term_clause + ') newer_than:' + str(window) + 'd'
+        )
+        gmail["_workflow_note"] = (
+            "Read these workflow-tool notifications and map each sender domain to its signal_type "
+            "via internal_evidence.workflow_tools in risk-model.json (e.g. ironcladapp.com -> "
+            "clm_stage). Emit each as an internal_evidence signal with a source_ref (the message "
+            "id/link). Internal-evidence lane only: these inform confidence, source gaps, risk "
+            "notes, and next-move wording, never Salesforce-owned truth, ranking, or flag_severity."
+        )
 
     calendar = calendar_plan(ctx, model, profile=profile)
 
