@@ -83,9 +83,9 @@ carrying a `red` flag (overdue, slipped, single-threaded, stalled) outranks one 
 ties break on flag count, then ACV, then days-to-close, all observed facts. There is **no win-
 probability model** here by design: grading deals against win/loss outcomes is a central, pooled data
 product, never something this local per-rep skill does. The flag-severity tiers live in
-`config/risk-model.json`.
+`../core/config/risk-model.json`.
 
-Forecast recommendation labels also come from `scripts/rollup.py`: `keep`, `downgrade`, `inspect`, and
+Forecast recommendation labels also come from `../core/scripts/rollup.py`: `keep`, `downgrade`, `inspect`, and
 `possible_upside`. They are deterministic posture labels, not CRM writebacks and not win-probability
 scores.
 
@@ -182,23 +182,23 @@ pipeline-read/
 ├── AGENTS.md          # Canonical operating map (any agent reads this first)
 ├── CLAUDE.md          # Thin wrapper that imports AGENTS.md + SKILL.md
 ├── CONTEXT.md         # Task router: triage, forecast, or hygiene mode
-├── SKILL.md           # The shared engine: full pipeline + all three output views
+├── SKILL.md           # Pipeline surface: full pipeline + all three output views
 ├── README.md
 ├── .gitignore
 ├── commands/          # Thin command frontends (symlinked into ~/.claude/skills)
 │   ├── pipeline-triage/SKILL.md    #   runs the engine in triage mode → §5
 │   ├── pipeline-forecast/SKILL.md  #   runs the engine in forecast mode → §5-forecast
 │   └── pipeline-hygiene/SKILL.md   #   runs the engine in hygiene mode (SF-only) → §5-hygiene
-├── scripts/           # Deterministic core (stdlib Python, no deps)
+├── scripts/           # Compatibility wrappers into ../core/scripts and ../core/validators
 │   ├── plan.py        #   emits the portfolio query + per-deal queries
 │   ├── analyze.py     #   per-deal processing entrypoint (copied from deal-read)
 │   ├── rollup.py      #   ranks deals, computes forecast rollups, compares snapshots
 │   ├── compute.py     #   deal metrics (called by analyze.py; from deal-read)
 │   ├── callstats.py   #   call-execution metrics (called by analyze.py; from deal-read)
 │   └── validate_brief.py # output-contract gate run on the drafted brief
-├── config/            # Owned data
-│   ├── risk-model.json #  dimensions, thresholds, pipeline/forecast/internal/hygiene config
-│   └── sf-fields.json #   Salesforce fields, amount/category mapping, internal + hygiene queries
+../core/config/        # Shared owned data
+├── risk-model.json    # dimensions, thresholds, pipeline/forecast/internal/hygiene config
+└── sf-fields.json     # Salesforce fields, amount/category mapping, internal + hygiene queries
 └── tests/             # python3 tests/test_*.py, no pytest
     ├── test_plan.py
     ├── test_rollup.py
@@ -214,5 +214,5 @@ pipeline-read/
     └── test_callstats.py
 ```
 
-The repo is split by where each piece of judgment belongs: owned data in `config/`, deterministic code
-in `scripts/`, and the thin model-steering layer in `SKILL.md`. `AGENTS.md` covers that design in full.
+`pipeline-read/` owns command routing, modes, and output shape. Shared config, deterministic scripts,
+validators, and source contracts live in `../core/`.

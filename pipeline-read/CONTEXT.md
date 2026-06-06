@@ -20,17 +20,17 @@ read `AGENTS.md`, then this file, then the `SKILL.md` section for the task.
 | Next-quarter pipeline read (`--next-quarter` or `--window next_quarter`) | Triage or Forecast | `SKILL.md` §1 to §5 or §5-forecast |
 | Forecast realism for the current fiscal quarter (`/pipeline-forecast`) | Forecast | `SKILL.md` §1 to §4, then §5-forecast |
 | Is my CRM data clean? Missing contacts/champion/next-step, stale opps (`/pipeline-hygiene`) | Hygiene | `SKILL.md` §1, §2-3-hygiene, §4, §5-hygiene |
-| Change hygiene flags, precedence, stale threshold, or champion roles | Config | `config/risk-model.json` (`hygiene` block) |
-| Change the hygiene contact-roles query fields | Config | `config/sf-fields.json` (`hygiene_scope`) |
-| Forecast posture (`--posture conservative|defend-commit|identify-upside`) | Forecast | `SKILL.md` §1 to §4, then §5-forecast; config in `risk-model.json` |
+| Change hygiene flags, precedence, stale threshold, or champion roles | Core config | `../core/config/risk-model.json` (`hygiene` block) |
+| Change the hygiene contact-roles query fields | Core config | `../core/config/sf-fields.json` (`hygiene_scope`) |
+| Forecast posture (`--posture conservative|defend-commit|identify-upside`) | Forecast | `SKILL.md` §1 to §4, then §5-forecast; config in `../core/config/risk-model.json` |
 | Prior snapshot comparison (`--compare <computed-inputs.json>`) | Forecast | Load the prior Computed inputs JSON and pass it to `rollup.py` |
-| Internal evidence (`--internal auto|off|force`) | Forecast/Internal | `SKILL.md` §2-3 and `config/risk-model.json` `internal_evidence` |
+| Internal evidence (`--internal auto|off|force`) | Forecast/Internal | `SKILL.md` §2-3 and `../core/config/risk-model.json` `internal_evidence` |
 | Deep-read one deal from the triage | Hand off | run `/deal-read <deal>` (the per-deal sibling) |
-| Change the fiscal calendar, close window, or flag-severity tiers | Config | `config/risk-model.json` (`pipeline` block) |
-| Change forecast posture labels or internal-evidence caps | Config | `config/risk-model.json` (`forecast`, `internal_evidence`) |
-| Retarget a new Salesforce org | Config | `config/sf-fields.json` |
-| Change amount basis, forecast category convention, or Slack room mapping fields | Config | `config/sf-fields.json` |
-| Change the risk model | Config | `config/risk-model.json` |
+| Change the fiscal calendar, close window, or flag-severity tiers | Core config | `../core/config/risk-model.json` (`pipeline` block) |
+| Change forecast posture labels or internal-evidence caps | Core config | `../core/config/risk-model.json` (`forecast`, `internal_evidence`) |
+| Retarget a new Salesforce org | Core config | `../core/config/sf-fields.json` |
+| Change amount basis, forecast category convention, or Slack room mapping fields | Core config | `../core/config/sf-fields.json` |
+| Change the risk model | Core config | `../core/config/risk-model.json` |
 | Verify a change broke nothing | Test | `python3 tests/test_*.py` |
 
 The pipeline is identical across triage and forecast: resolve the rep's in-scope opps for JSQ's current

@@ -78,10 +78,11 @@ which evidence is missing and how that limits confidence across the affected dea
 
 ## Files (the deterministic core — do not recite or reinvent from memory)
 
-The repo is split by the 60/30/10 budget: `config/` is the owned data, `scripts/` is the deterministic
-code, this SKILL.md is the thin steering layer. You invoke three scripts directly: `scripts/plan.py`
-(what to query, both phases), `scripts/analyze.py` (per-deal processing, once per deal), and
-`scripts/rollup.py` (the pipeline aggregation, once over all deals).
+This surface is thin. Shared mechanics live in `../core/`; the local `scripts/` files are compatibility
+wrappers that delegate there. This SKILL.md owns command routing, mode choice, portfolio output shape,
+and the no-write policy. You invoke three wrapper scripts directly: `scripts/plan.py` (what to query,
+both phases), `scripts/analyze.py` (per-deal processing, once per deal), and `scripts/rollup.py` (the
+pipeline aggregation, once over all deals).
 
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
@@ -97,10 +98,10 @@ code, this SKILL.md is the thin steering layer. You invoke three scripts directl
   ranks deals by severity of current evidence, computes portfolio and forecast aggregates, emits
   deterministic recommendation labels, and compares against a prior Computed inputs artifact when
   supplied. Do not rank, label, compare, or sum in your head.
-- **`config/risk-model.json`** — chosen framework plus the `pipeline`, `forecast`, and
+- **`../core/config/risk-model.json`** — chosen framework plus the `pipeline`, `forecast`, and
   `internal_evidence` blocks. To change posture options, recommendation labels, close-window controls,
   or internal-evidence caps, edit this file.
-- **`config/sf-fields.json`** — chosen Salesforce field/query mapping, including `pipeline_scope`,
+- **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping, including `pipeline_scope`,
   amount basis, forecast category convention, and internal source mapping fields. To retarget another
   org, edit this.
 - **`scripts/compute.py` / `scripts/callstats.py`** — deterministic metrics, invoked by `analyze.py`.
@@ -273,7 +274,7 @@ also returns `forecast.category_rollup`, `forecast.recommendations`, `internal_e
 hygiene-flag precedence instead of risk severity, and each row carries `dominant_flag`, `hygiene_flags`,
 `contacts`, `has_champion`, and `next_step_present`. Read these; do not re-rank, re-label, re-compare,
 or re-sum yourself. Ranking is severity of evidence (or hygiene precedence), never a win-probability —
-there are no predictive weights here by design (see `config/risk-model.json`).
+there are no predictive weights here by design (see `../core/config/risk-model.json`).
 
 For each ranked deal, turn its `dominant_flag` and `risk_flags` into one cited risk line and one
 concrete next move, drawing the evidence from that deal's gather (call date, email date, or SF field).

@@ -39,21 +39,20 @@ which evidence is missing and how that limits confidence.
 
 ## Files (the deterministic core — do not recite or reinvent from memory)
 
-The repo is split by the 60/30/10 budget: `config/` is the owned data (chosen facts), `scripts/` is
-the deterministic code, this SKILL.md is the thin steering layer. You only ever invoke two scripts
-directly: `scripts/plan.py` (what to query) and `scripts/analyze.py` (all the processing). The others
-are data or are called *by* analyze.py.
+This surface is thin. Shared mechanics live in `../core/`; the local `scripts/` files are compatibility
+wrappers that delegate there. This SKILL.md owns orchestration, output shape, prep/review mode, and the
+Gmail draft policy.
 
 - **`scripts/plan.py`** — emits the exact Salesforce/Gmail/Zoom queries to run for this deal. Field
-  names come from `config/sf-fields.json`, the email window from `config/risk-model.json`. You execute
+  names come from `../core/config/sf-fields.json`, the email window from `../core/config/risk-model.json`. You execute
   what it prints (only you can call the connectors), but you never improvise SOQL.
 - **`scripts/analyze.py`** — the single processing entrypoint. Feed it one bundle of the raw data you
   gathered; it runs `compute.py` + `callstats.py`, parses account history, and normalizes Slack/Drive
   internal evidence, returning every metric, flag, source gap, and the prior-loss summary. Do not
   stitch these yourself.
-- **`config/risk-model.json`** — chosen framework: scored dimensions, status enum, thresholds,
+- **`../core/config/risk-model.json`** — chosen framework: scored dimensions, status enum, thresholds,
   discovery checklist. To change the model, edit this file.
-- **`config/sf-fields.json`** — chosen Salesforce field/query mapping. To retarget another org, edit this.
+- **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping. To retarget another org, edit this.
 - **`scripts/compute.py` / `scripts/callstats.py`** — deterministic metrics, invoked by
   `scripts/analyze.py`. Don't call them directly.
 - **`scripts/validate_brief.py`** — the output-contract gate. Pipe your drafted brief (review mode) into
@@ -80,7 +79,7 @@ are data or are called *by* analyze.py.
      (feeds stage velocity + slippage). If the org returns none, fine — `analyze.py` degrades.
    - `salesforce.prior_account_opps` → closed opps on the same account. High-value: a prior loss is
      coaching context, a prior win is a foothold. `analyze.py` summarizes these.
-3. Note `getObjectSchema` is no longer required per-run — field names live in `sf-fields.json`. Run it
+3. Note `getObjectSchema` is no longer required per-run — field names live in `../core/config/sf-fields.json`. Run it
    only to retarget a new org, then update that file.
 
 ### 2. Pull recent calls (Zoom)
@@ -158,7 +157,7 @@ when `Decision_Maker__c` is populated or an Economic Buyer role exists), and `op
 `flags.champion_identified`, and `flags.paper_not_started`. Everything below reads `analyze.py`'s output:
 `deal_metrics`, `call_execution`, `account_history`, and `internal_evidence`.
 
-Score the dimensions defined in `risk-model.json` — read them from the file, do not work from a
+Score the dimensions defined in `../core/config/risk-model.json` — read them from the file, do not work from a
 remembered list. For each dimension, compare what you observed against its `healthy` and `at_risk`
 signals, then assign one of the statuses in the model's `statuses` enum (currently On track / At risk /
 Blocked / Unknown) with one line of evidence, citing the source: call date, email date, or SF field.
@@ -186,11 +185,11 @@ let them override the call/email evidence or the deterministic flags.
 Rank risks by severity of current evidence, not by assumed correlation with outcome. There are no
 predictive weights to rank by, and there is no plan to add them here: grading dimensions against
 outcomes is a central data product, never something this local skill does. The `_comment` in
-`config/risk-model.json` is canonical on this.
+`../core/config/risk-model.json` is canonical on this.
 
 **Call execution (review mode).** Combine the `call_execution` block from `analyze.py` (talk ratio,
 questions, monologue, `flags.talk_ratio_high`) with a discovery-coverage read: go through
-`risk-model.json` `call_execution.discovery_checklist` and mark which topics the rep actually covered
+`../core/config/risk-model.json` `call_execution.discovery_checklist` and mark which topics the rep actually covered
 (from the transcript or summary). The coachable pattern is a high talk ratio or long monologues paired
 with missed checklist items — the rep talked past the discovery. Coverage is a model judgment; the
 ratio and counts are not. `account_history` from `analyze.py` fills the brief's Account history line.

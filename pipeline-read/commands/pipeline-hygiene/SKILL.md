@@ -5,12 +5,13 @@ description: Cross-pipeline CRM data-quality scan for a rep - one row per open o
 
 # Pipeline Hygiene
 
-Thin command frontend. The engine, config, and full pipeline live in the shared
-**pipeline-read** repo; this command runs that pipeline in **hygiene** mode and presents the
+Thin command frontend. The engine, shared config, and full pipeline live under
+`/Users/matthewweigand/Code/opp-intel`; this command runs the **pipeline-read** surface in
+**hygiene** mode and presents the
 CRM data-quality view.
 
-**Engine directory:** `/Users/matthewweigand/Code/pipeline-read` (call it `$ENGINE`). Scripts are at
-`$ENGINE/scripts`, config at `$ENGINE/config`.
+**Engine directory:** `/Users/matthewweigand/Code/opp-intel/pipeline-read` (call it `$ENGINE`). Scripts are at
+`$ENGINE/scripts`; shared config is at `/Users/matthewweigand/Code/opp-intel/core/config`.
 
 Hygiene asks a different question than triage or forecast: not "is this deal at risk?" but "is the
 Salesforce *record* clean?" — contacts logged, a champion role set, `NextStep` and amount filled,

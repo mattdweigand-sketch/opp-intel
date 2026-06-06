@@ -5,12 +5,13 @@ description: Ranked forecast-risk triage across a rep's whole pipeline - riskies
 
 # Pipeline Triage
 
-Thin command frontend. The engine, config, and full pipeline live in the shared
-**pipeline-read** repo; this command runs that pipeline in **triage** mode and presents the
+Thin command frontend. The engine, shared config, and full pipeline live under
+`/Users/matthewweigand/Code/opp-intel`; this command runs the **pipeline-read** surface in
+**triage** mode and presents the
 ranked-risk brief.
 
-**Engine directory:** `/Users/matthewweigand/Code/pipeline-read` (call it `$ENGINE`). Scripts are at
-`$ENGINE/scripts`, config at `$ENGINE/config`.
+**Engine directory:** `/Users/matthewweigand/Code/opp-intel/pipeline-read` (call it `$ENGINE`). Scripts are at
+`$ENGINE/scripts`; shared config is at `/Users/matthewweigand/Code/opp-intel/core/config`.
 
 ## What to do
 

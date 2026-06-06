@@ -49,15 +49,15 @@ deal-read/
 ├── SKILL.md           # The full coaching pipeline
 ├── README.md
 ├── .gitignore
-├── scripts/           # Deterministic core (stdlib Python, no deps)
+├── scripts/           # Compatibility wrappers into ../core/scripts and ../core/validators
 │   ├── plan.py        #   emits the exact connector queries to run
 │   ├── analyze.py     #   single processing entrypoint
 │   ├── compute.py     #   deal metrics (called by analyze.py)
 │   ├── callstats.py   #   call-execution metrics (called by analyze.py)
 │   └── validate_brief.py # output-contract gate run on the drafted brief
-├── config/            # Owned data
-│   ├── risk-model.json #  scored dimensions, thresholds, discovery checklist, legal-status set
-│   └── sf-fields.json #   Salesforce field + query mapping (incl. contact-role + MEDDPICC fields)
+../core/config/        # Shared owned data
+├── risk-model.json    # scored dimensions, thresholds, discovery checklist, legal-status set
+└── sf-fields.json     # Salesforce field + query mapping
 └── tests/             # python3 tests/test_*.py, no pytest
     ├── test_plan.py
     ├── test_analyze.py
@@ -66,4 +66,4 @@ deal-read/
     └── test_validate_brief.py
 ```
 
-Design note: the repo is split by where each piece of judgment belongs: owned config/data in `config/`, deterministic code in `scripts/`, and the thin workflow layer in `CONTEXT.md` plus `SKILL.md` (routing plus coaching pipeline). `AGENTS.md` covers that design in full.
+Design note: `deal-read/` owns the one-opportunity workflow and output shape. Shared config, deterministic scripts, validators, and source contracts live in `../core/`.
