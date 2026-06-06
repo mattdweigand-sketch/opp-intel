@@ -98,16 +98,30 @@ Deals with red flags outrank deals with amber flags. Ties break on observed fact
 
 Do not add local win-probability modeling here. If that ever exists, it belongs in a separate pooled data product.
 
-## Local command registration
+## Team setup
 
-Local Claude command registration points into this repo:
+Clone the repo wherever you keep team projects. Then register the local Claude commands from that checkout:
+
+```bash
+scripts/register-claude-skills.sh
+```
+
+The script creates symlinks under `~/.claude/skills`:
 
 ```text
-~/.claude/skills/deal-read -> /Users/matthewweigand/Code/opp-intel/deal-read
-~/.claude/skills/pipeline-triage -> /Users/matthewweigand/Code/opp-intel/pipeline-read/commands/pipeline-triage
-~/.claude/skills/pipeline-forecast -> /Users/matthewweigand/Code/opp-intel/pipeline-read/commands/pipeline-forecast
-~/.claude/skills/pipeline-hygiene -> /Users/matthewweigand/Code/opp-intel/pipeline-read/commands/pipeline-hygiene
+~/.claude/skills/deal-read -> <repo>/deal-read
+~/.claude/skills/pipeline-triage -> <repo>/pipeline-read/commands/pipeline-triage
+~/.claude/skills/pipeline-forecast -> <repo>/pipeline-read/commands/pipeline-forecast
+~/.claude/skills/pipeline-hygiene -> <repo>/pipeline-read/commands/pipeline-hygiene
 ```
+
+If a teammate keeps Claude skills somewhere else, they can set `CLAUDE_SKILLS_DIR`:
+
+```bash
+CLAUDE_SKILLS_DIR="$HOME/.config/claude/skills" scripts/register-claude-skills.sh
+```
+
+The script will not replace an existing non-symlink skill folder unless run with `--force`.
 
 The old standalone GitHub repos are archived. Treat this repo as the active home.
 
@@ -120,7 +134,8 @@ opp-intel/
 ├── README.md
 ├── core/
 ├── deal-read/
-└── pipeline-read/
+├── pipeline-read/
+└── scripts/
 ```
 
 Start with `AGENTS.md` for repo-wide rules. Claude can start at `CLAUDE.md`, which is only a thin pointer back to `AGENTS.md`.
