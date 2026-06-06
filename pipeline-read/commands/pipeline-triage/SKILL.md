@@ -1,17 +1,13 @@
 ---
 name: pipeline-triage
-description: Ranked forecast-risk triage across a rep's whole pipeline - riskiest deals first, each with its dominant risk (cited) and the single next move, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in triage mode. Trigger on "/pipeline-triage", "/pipeline-triage --next-quarter", "triage my pipeline", "which of my deals are most at risk", "what should I work this week across my deals". For the forecast-call view (the number, category rollup, keep/downgrade labels, movement vs a prior snapshot) use /pipeline-forecast instead. Per-rep, live connectors (Salesforce, Zoom, Gmail, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
+description: Ranked forecast-risk triage across a rep's whole pipeline - riskiest deals first, each with its dominant risk (cited) and the single next move, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in triage mode. Trigger on "/pipeline-triage", "/pipeline-triage --next-quarter", "triage my pipeline", "which of my deals are most at risk", "what should I work this week across my deals". For the forecast-call view (the number, category rollup, keep/downgrade labels, movement vs a prior snapshot) use /pipeline-forecast instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
 ---
 
 # Pipeline Triage
 
-Thin command frontend. The engine, shared config, and full pipeline live under
-`/Users/matthewweigand/Code/opp-intel`; this command runs the **pipeline-read** surface in
-**triage** mode and presents the
-ranked-risk brief.
+Thin command frontend. The engine, shared config, and full pipeline live in this repo. This command runs the **pipeline-read** surface in **triage** mode and presents the ranked-risk brief.
 
-**Engine directory:** `/Users/matthewweigand/Code/opp-intel/pipeline-read` (call it `$ENGINE`). Scripts are at
-`$ENGINE/scripts`; shared config is at `/Users/matthewweigand/Code/opp-intel/core/config`.
+**Engine directory:** the repo's `pipeline-read/` surface (call it `$ENGINE`). Scripts are at `$ENGINE/scripts`; shared config is at `../core/config` from the surface.
 
 ## What to do
 

@@ -17,4 +17,4 @@ Works with any agent. Claude Code, ChatGPT, Codex, Cursor, or a raw-API harness 
 | Change the risk model | Core config | `../core/config/risk-model.json` |
 | Verify a change broke nothing | Test | `python3 tests/test_*.py` |
 
-The pipeline is identical across review and prep: resolve the opportunity, gather Salesforce + Zoom + Gmail, run `scripts/plan.py` for the queries and `scripts/analyze.py` for the metrics, then score `../core/config/risk-model.json`. Only the final output differs. Draft mode is gated on the computed freshness flags, not judgment (see `SKILL.md` §6).
+The pipeline is identical across review and prep: resolve the opportunity, gather Salesforce, Gmail, Google Calendar, Zoom, Slack, and linked Drive evidence as planned by `scripts/plan.py`, run `scripts/analyze.py` for the metrics, then score `../core/config/risk-model.json`. Only the final output differs. Draft mode is gated on the computed freshness flags, not judgment (see `SKILL.md` §6).

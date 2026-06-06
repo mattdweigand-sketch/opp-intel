@@ -44,7 +44,7 @@ This surface is thin. Shared mechanics live in `../core/`; the local `scripts/` 
 wrappers that delegate there. This SKILL.md owns orchestration, output shape, prep/review mode, and the
 Gmail draft policy.
 
-- **`scripts/plan.py`** — emits the exact Salesforce/Gmail/Zoom queries to run for this deal. Field
+- **`scripts/plan.py`** — emits the exact Salesforce/Gmail/Calendar/Zoom queries to run for this deal. Field
   names come from `../core/config/sf-fields.json`, the email window from `../core/config/risk-model.json`. You execute
   what it prints (only you can call the connectors), but you never improvise SOQL.
 - **`scripts/analyze.py`** — the single processing entrypoint. Feed it one bundle of the raw data you

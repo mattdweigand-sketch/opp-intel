@@ -30,6 +30,7 @@
     },
     "salesforce_evidence": { "type": "object" },
     "email_evidence": { "type": "object" },
+    "calendar_evidence": { "type": "object" },
     "call_evidence": { "type": "object" },
     "internal_evidence": { "type": "object" },
     "source_gaps": { "type": "array", "items": { "type": "string" } }

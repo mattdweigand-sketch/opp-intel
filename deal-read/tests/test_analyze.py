@@ -96,6 +96,35 @@ def main():
 
     r = run({
         "compute_input": {},
+        "calendar_evidence": {
+            "coverage": "available",
+            "historical_meetings": [
+                {
+                    "title": "Discovery",
+                    "start": "2026-05-20T15:00:00Z",
+                    "attendees": ["buyer@example.com"],
+                    "source_ref": "calendar:event-1",
+                }
+            ],
+            "upcoming_meetings": [
+                {
+                    "title": "Legal review",
+                    "start": "2026-06-10T15:00:00Z",
+                    "conference_link": "https://meet.example/abc",
+                    "source_ref": "calendar:event-2",
+                }
+            ],
+        },
+    })
+    calendar = r["calendar_evidence"]
+    ok &= check("calendar: historical meeting preserved", calendar["historical_meetings"][0]["title"] == "Discovery")
+    ok &= check("calendar: upcoming meeting preserved", calendar["upcoming_meetings"][0]["source_ref"] == "calendar:event-2")
+
+    r = run({"compute_input": {}, "calendar_evidence": {"coverage": "insufficient_context"}})
+    ok &= check("calendar: source gap preserved", "calendar_context_missing" in r["calendar_evidence"]["source_gaps"])
+
+    r = run({
+        "compute_input": {},
         "internal_evidence": {"mode": "auto", "coverage": "deal_room_missing"},
     })
     ok &= check("internal: top-level missing coverage preserved",
@@ -109,6 +138,7 @@ def main():
     ok &= check("empty: no prior history", r["account_history"]["prior_losses"] == 0)
     ok &= check("empty: history summary", "No prior closed deals" in r["account_history"]["summary"])
     ok &= check("empty: internal evidence null", r["internal_evidence"] is None)
+    ok &= check("empty: calendar evidence null", r["calendar_evidence"] is None)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

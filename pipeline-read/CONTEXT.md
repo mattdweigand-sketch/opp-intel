@@ -26,7 +26,7 @@ read `AGENTS.md`, then this file, then the `SKILL.md` section for the task.
 | Prior snapshot comparison (`--compare <computed-inputs.json>`) | Forecast | Load the prior Computed inputs JSON and pass it to `rollup.py` |
 | Internal evidence (`--internal auto|off|force`) | Forecast/Internal | `SKILL.md` §2-3 and `../core/config/risk-model.json` `internal_evidence` |
 | Deep-read one deal from the triage | Hand off | run `/deal-read <deal>` (the per-deal sibling) |
-| Change the fiscal calendar, close window, or flag-severity tiers | Core config | `../core/config/risk-model.json` (`pipeline` block) |
+| Change the fiscal close calendar, close window, or flag-severity tiers | Core config | `../core/config/risk-model.json` (`pipeline` block) |
 | Change forecast posture labels or internal-evidence caps | Core config | `../core/config/risk-model.json` (`forecast`, `internal_evidence`) |
 | Retarget a new Salesforce org | Core config | `../core/config/sf-fields.json` |
 | Change amount basis, forecast category convention, or Slack room mapping fields | Core config | `../core/config/sf-fields.json` |
@@ -35,13 +35,13 @@ read `AGENTS.md`, then this file, then the `SKILL.md` section for the task.
 
 The pipeline is identical across triage and forecast: resolve the rep's in-scope opps for JSQ's current
 fiscal quarter by default, or next fiscal quarter when requested, gather
-Salesforce + Zoom + Gmail per deal, add bounded mapped Slack/linked proposal-doc evidence by default
+Salesforce + Gmail + Google Calendar + Zoom per deal, add bounded mapped Slack/linked proposal-doc evidence by default
 (unless `--internal off`), run `scripts/plan.py` for the queries and `scripts/analyze.py` per deal,
 then `scripts/rollup.py` over all of them. Triage leads with the riskiest deals overall. Forecast leads
 with posture, category rollup, recommendation labels, movement from a prior Computed inputs artifact
 when supplied, and evidence gaps.
 
-Hygiene is the cheap exception: it skips the per-deal Zoom/Gmail/Slack loop. It resolves the same
+Hygiene is the cheap exception: it skips the per-deal Gmail/Calendar/Zoom/Slack loop. It resolves the same
 in-scope opps, runs one batched `OpportunityContactRole` query, computes CRM data-quality flags per opp
 with `compute.py` (`hygiene:true`), and rolls up with `rollup.py` `mode:"hygiene"`. It leads with a flag
 distribution and a by-deal list of the single dominant data gap on each opp, and proposes no fixes.

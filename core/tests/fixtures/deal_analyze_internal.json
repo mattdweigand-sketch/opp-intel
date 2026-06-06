@@ -40,6 +40,25 @@
           "confidence": "high"
         }
       ]
+    },
+    "calendar_evidence": {
+      "coverage": "available",
+      "historical_meetings": [
+        {
+          "title": "Discovery",
+          "start": "2026-05-20T15:00:00Z",
+          "attendees": ["buyer@example.com"],
+          "source_ref": "calendar:event-1"
+        }
+      ],
+      "upcoming_meetings": [
+        {
+          "title": "Legal review",
+          "start": "2026-06-10T15:00:00Z",
+          "conference_link": "https://meet.example/abc",
+          "source_ref": "calendar:event-2"
+        }
+      ]
     }
   },
   "output": {
@@ -95,6 +114,32 @@
         "reason": "Won't spend $18K at one time."
       },
       "summary": "Lost 1 time(s) on this account. Most recent loss 2020-06-02: Won't spend $18K at one time."
+    },
+    "calendar_evidence": {
+      "coverage": "available",
+      "historical_meetings": [
+        {
+          "title": "Discovery",
+          "start": "2026-05-20T15:00:00Z",
+          "end": null,
+          "attendees": ["buyer@example.com"],
+          "organizer": null,
+          "conference_link": null,
+          "source_ref": "calendar:event-1"
+        }
+      ],
+      "upcoming_meetings": [
+        {
+          "title": "Legal review",
+          "start": "2026-06-10T15:00:00Z",
+          "end": null,
+          "attendees": [],
+          "organizer": null,
+          "conference_link": "https://meet.example/abc",
+          "source_ref": "calendar:event-2"
+        }
+      ],
+      "source_gaps": []
     },
     "internal_evidence": {
       "mode": "auto",

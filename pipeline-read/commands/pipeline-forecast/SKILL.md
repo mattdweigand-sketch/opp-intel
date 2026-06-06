@@ -1,17 +1,13 @@
 ---
 name: pipeline-forecast
-description: Forecast-call read across a rep's whole pipeline - leads with the number, forecast posture, category rollup (commit/upside/pipeline), deterministic keep/downgrade/inspect/possible_upside labels, movement vs a prior snapshot, internal-evidence coverage, and named evidence gaps, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in forecast mode. Trigger on "/pipeline-forecast", "/pipeline-forecast --posture conservative", "/pipeline-forecast --compare <prior>", "is my forecast real", "what would I actually bank this quarter", "review my forecast". For the quick riskiest-first work-the-week view use /pipeline-triage instead. Per-rep, live connectors (Salesforce, Zoom, Gmail, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
+description: Forecast-call read across a rep's whole pipeline - leads with the number, forecast posture, category rollup (commit/upside/pipeline), deterministic keep/downgrade/inspect/possible_upside labels, movement vs a prior snapshot, internal-evidence coverage, and named evidence gaps, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in forecast mode. Trigger on "/pipeline-forecast", "/pipeline-forecast --posture conservative", "/pipeline-forecast --compare <prior>", "is my forecast real", "what would I actually bank this quarter", "review my forecast". For the quick riskiest-first work-the-week view use /pipeline-triage instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
 ---
 
 # Pipeline Forecast
 
-Thin command frontend. The engine, shared config, and full pipeline live under
-`/Users/matthewweigand/Code/opp-intel`; this command runs the **pipeline-read** surface in
-**forecast** mode and presents the
-forecast-read view.
+Thin command frontend. The engine, shared config, and full pipeline live in this repo. This command runs the **pipeline-read** surface in **forecast** mode and presents the forecast-read view.
 
-**Engine directory:** `/Users/matthewweigand/Code/opp-intel/pipeline-read` (call it `$ENGINE`). Scripts are at
-`$ENGINE/scripts`; shared config is at `/Users/matthewweigand/Code/opp-intel/core/config`.
+**Engine directory:** the repo's `pipeline-read/` surface (call it `$ENGINE`). Scripts are at `$ENGINE/scripts`; shared config is at `../core/config` from the surface.
 
 ## What to do
 

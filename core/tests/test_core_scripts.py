@@ -44,9 +44,17 @@ def main():
     })
     ok &= check("core compute: hygiene flags preserved", hygiene["flags"]["no_contact_roles"] is True)
 
-    analyzed = run("analyze.py", {"compute_input": {}, "prior_opps": []})
+    analyzed = run("analyze.py", {
+        "compute_input": {},
+        "prior_opps": [],
+        "calendar_evidence": {
+            "coverage": "available",
+            "future": [{"title": "Buyer follow-up", "start": "2026-06-10T15:00:00Z"}],
+        },
+    })
     ok &= check("core analyze: deal metrics emitted", "deal_metrics" in analyzed)
     ok &= check("core analyze: account history emitted", "account_history" in analyzed)
+    ok &= check("core analyze: calendar emitted", analyzed["calendar_evidence"]["upcoming_meetings"][0]["title"] == "Buyer follow-up")
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

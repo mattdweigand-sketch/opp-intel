@@ -48,11 +48,22 @@ def main():
     ok &= check("most_recent_loss is the newest (2020)",
                 r["account_history"]["most_recent_loss"]["close_date"] == "2020-06-02")
 
+    r = run({
+        "compute_input": {},
+        "calendar_evidence": {
+            "coverage": "available",
+            "history": [{"title": "Discovery", "start_time": "2026-05-20T15:00:00Z"}],
+            "future": [{"title": "Renewal review", "start_time": "2026-06-10T15:00:00Z"}],
+        },
+    })
+    ok &= check("calendar evidence preserved", r["calendar_evidence"]["upcoming_meetings"][0]["title"] == "Renewal review")
+
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})
     ok &= check("empty: no crash", "deal_metrics" in r)
     ok &= check("empty: no prior history", r["account_history"]["prior_losses"] == 0)
     ok &= check("empty: history summary", "No prior closed deals" in r["account_history"]["summary"])
+    ok &= check("empty: calendar evidence null", r["calendar_evidence"] is None)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

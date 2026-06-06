@@ -12,6 +12,7 @@ Bundle:
     "compute_input": { ... what compute.py expects ... },
     "transcript_file": "/abs/path/to/asset.json",   # optional; enables call_execution
     "prior_opps": [ { closed opps on the same account } ],  # optional
+    "calendar_evidence": { ... historical + upcoming meetings } # optional
     "internal_evidence": { ... Slack + linked-doc findings } # optional
   }
 """
@@ -123,6 +124,48 @@ def normalize_internal_evidence(raw):
     }
 
 
+def normalize_calendar_evidence(raw):
+    """Preserve read-only Calendar evidence and explicit coverage gaps."""
+    raw = raw or {}
+    if not raw:
+        return None
+
+    source_gaps = list(raw.get("source_gaps") or [])
+    coverage = raw.get("coverage")
+    if coverage in {"insufficient_context", "unavailable", "checked_no_match"}:
+        source_gaps.append(
+            "calendar_context_missing" if coverage == "insufficient_context" else "calendar_" + coverage
+        )
+
+    def compact_event(event):
+        return {
+            "title": event.get("title"),
+            "start": event.get("start") or event.get("start_time"),
+            "end": event.get("end") or event.get("end_time"),
+            "attendees": event.get("attendees") or [],
+            "organizer": event.get("organizer"),
+            "conference_link": event.get("conference_link"),
+            "source_ref": event.get("source_ref"),
+        }
+
+    historical = first_list(raw.get("historical_meetings"), raw.get("history"))
+    upcoming = first_list(raw.get("upcoming_meetings"), raw.get("future"))
+
+    return {
+        "coverage": coverage,
+        "historical_meetings": [compact_event(e) for e in historical],
+        "upcoming_meetings": [compact_event(e) for e in upcoming],
+        "source_gaps": sorted(set(source_gaps)),
+    }
+
+
+def first_list(*values):
+    for value in values:
+        if isinstance(value, list):
+            return value
+    return []
+
+
 def main():
     bundle = json.load(sys.stdin)
 
@@ -137,6 +180,7 @@ def main():
         "deal_metrics": deal_metrics,
         "call_execution": call_execution,
         "account_history": account_history(bundle.get("prior_opps")),
+        "calendar_evidence": normalize_calendar_evidence(bundle.get("calendar_evidence")),
         "internal_evidence": normalize_internal_evidence(bundle.get("internal_evidence")),
     }
     json.dump(out, sys.stdout, indent=2)

@@ -1,21 +1,17 @@
 ---
 name: pipeline-hygiene
-description: Cross-pipeline CRM data-quality scan for a rep - one row per open opportunity, each tagged with its single dominant hygiene flag (no contacts, single-threaded, no champion, missing amount, missing next step, stale activity, overdue close), ordered by a fixed precedence, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in hygiene mode. Deliberately cheap and Salesforce-only - no Zoom, Gmail, Slack, or Drive. Trigger on "/pipeline-hygiene", "is my CRM data clean", "which deals are missing contacts or a champion", "pipeline hygiene", "data-quality scan of my pipeline", "which opps have no next step", "stale or incomplete opportunities". Names data gaps only; it proposes NO fixes or next moves (that is /pipeline-triage). For the riskiest-first work-the-week view use /pipeline-triage; for the forecast number use /pipeline-forecast. Per-rep, Salesforce read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
+description: Cross-pipeline CRM data-quality scan for a rep - one row per open opportunity, each tagged with its single dominant hygiene flag (no contacts, single-threaded, no champion, missing amount, missing next step, stale activity, overdue close), ordered by a fixed precedence, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in hygiene mode. Deliberately cheap and Salesforce-only - no Gmail, Calendar, Zoom, Slack, or Drive. Trigger on "/pipeline-hygiene", "is my CRM data clean", "which deals are missing contacts or a champion", "pipeline hygiene", "data-quality scan of my pipeline", "which opps have no next step", "stale or incomplete opportunities". Names data gaps only; it proposes NO fixes or next moves (that is /pipeline-triage). For the riskiest-first work-the-week view use /pipeline-triage; for the forecast number use /pipeline-forecast. Per-rep, Salesforce read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
 ---
 
 # Pipeline Hygiene
 
-Thin command frontend. The engine, shared config, and full pipeline live under
-`/Users/matthewweigand/Code/opp-intel`; this command runs the **pipeline-read** surface in
-**hygiene** mode and presents the
-CRM data-quality view.
+Thin command frontend. The engine, shared config, and full pipeline live in this repo. This command runs the **pipeline-read** surface in **hygiene** mode and presents the CRM data-quality view.
 
-**Engine directory:** `/Users/matthewweigand/Code/opp-intel/pipeline-read` (call it `$ENGINE`). Scripts are at
-`$ENGINE/scripts`; shared config is at `/Users/matthewweigand/Code/opp-intel/core/config`.
+**Engine directory:** the repo's `pipeline-read/` surface (call it `$ENGINE`). Scripts are at `$ENGINE/scripts`; shared config is at `../core/config` from the surface.
 
 Hygiene asks a different question than triage or forecast: not "is this deal at risk?" but "is the
 Salesforce *record* clean?" — contacts logged, a champion role set, `NextStep` and amount filled,
-activity recent. It is a deliberately cheap **Salesforce-only** scan: no Zoom, Gmail, Slack, or Drive,
+activity recent. It is a deliberately cheap **Salesforce-only** scan: no Gmail, Calendar, Zoom, Slack, or Drive,
 and no per-deal subagent fan-out. It names data gaps and **proposes no fixes** — that is the clean line
 versus `/pipeline-triage`.
 
@@ -29,7 +25,7 @@ versus `/pipeline-triage`.
    - **§2-3-hygiene** — Salesforce-only gather: run `plan.py` again with `hygiene:true` and the
      `opp_ids` to get the batched `contact_roles_bulk` query and `champion_roles`; group roles by
      `OpportunityId`; run `$ENGINE/scripts/analyze.py` per opp with a light `hygiene:true`
-     `compute_input`. **No subagents, no Zoom/Gmail/Slack/Drive.**
+     `compute_input`. **No subagents, no Gmail/Calendar/Zoom/Slack/Drive.**
    - §4 roll up once with `$ENGINE/scripts/rollup.py`. **Set `"mode":"hygiene"` in the rollup bundle.**
 3. Present the **§5-hygiene view** (distribution, by-deal dominant flags, clean list). Name the gaps;
    add no fixes or next moves.

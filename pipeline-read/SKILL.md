@@ -5,7 +5,7 @@ description: Shared engine for /pipeline-triage, /pipeline-forecast, and /pipeli
 
 # Pipeline Read
 
-Coach one rep across their whole forecast. Pull that rep's own Salesforce, Zoom, and Gmail data for
+Coach one rep across their whole forecast. Pull that rep's own Salesforce, Gmail, Google Calendar, and Zoom data for
 every open opportunity closing inside the current fiscal quarter by default, add mapped Slack deal-room and linked
 proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the same deal-risk model
 `deal-read` uses, and roll the results up into one ranked triage. Read-only across all sources. Makes
@@ -51,7 +51,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
   forecast posture, category rollup, recommendation labels, movement if a prior computed-inputs JSON is
   supplied, internal evidence coverage, and named evidence gaps.
 - Hygiene (step 1, then §2-3-hygiene, then §4 and §5-hygiene): the cheap Salesforce-only CRM
-  data-quality scan. It does **not** run the per-deal Zoom/Gmail/Slack loop in §2-3.
+  data-quality scan. It does **not** run the per-deal Gmail/Calendar/Zoom/Slack loop in §2-3.
 
 The roll-up bundle's `mode` field is set explicitly by the command (`triage`, `forecast`, or
 `hygiene`). `rollup.py` obeys that field; it does **not** infer the view from the presence of
@@ -87,7 +87,7 @@ pipeline aggregation, once over all deals).
 
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
-  emits the per-deal Salesforce/Gmail/Zoom queries plus mapped Slack/linked-doc instructions when
+  emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus mapped Slack/linked-doc instructions when
   enabled. You execute what it prints; you never improvise SOQL or broad Slack/Drive search. In a
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
@@ -347,7 +347,7 @@ Forecast Read - <rep>, <N> deals closing by <window end>. Run <date>.
 
 Confidence: <High / Medium / Low> - <coverage clause>.
 
-Review scope: <live Salesforce + Zoom + Gmail, amount basis, forecast posture, category convention>.
+Review scope: <live Salesforce + Gmail + Calendar + Zoom, amount basis, forecast posture, category convention>.
 
 Internal evidence: <internal mode; deal rooms mapped for N of M deals; linked proposal docs read for X
 deals; missing/unavailable rooms named when material>.
