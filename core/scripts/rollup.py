@@ -286,6 +286,50 @@ def portfolio_for(deals, rows):
     }
 
 
+def row_primary_blind(row):
+    """True when a deal's PRIMARY evidence is blind: its email view is provably stale,
+    or a primary connector under-collected (activity_coverage_gap / *_connector_degraded).
+    Optional internal-evidence gaps (deal_room_missing, checked_no_match, linked_doc_*) are
+    color, not primary evidence, and deliberately do NOT count here."""
+    if "email_data_stale" in (row.get("risk_flags") or []):
+        return True
+    for gap in row.get("coverage_gaps") or []:
+        if gap == "activity_coverage_gap" or str(gap).endswith("_connector_degraded"):
+            return True
+    return False
+
+
+def apply_confidence_gate(rows, total_acv, gate_cfg):
+    """Fail-loud, dollar-weighted confidence floor. A material deal (>= pct of in-scope
+    ACV, or among the top-N by amount) whose PRIMARY evidence is blind forces the
+    portfolio confidence_floor to Low and marks that row confidence_blocked. Mutates rows
+    in place (ranking shares the same objects) and returns (floor, blocked_deal_names).
+    No material+blind deal -> floor None, the model keeps its discretion."""
+    pct = gate_cfg.get("material_deal_acv_pct", 0.25)
+    top_n = gate_cfg.get("material_top_n_by_amount", 1)
+    by_amount = sorted(rows, key=lambda r: amount_or_zero(r.get("acv")), reverse=True)
+    top_objs = by_amount[:top_n] if top_n else []
+    blocked = []
+    for row in rows:
+        acv = amount_or_zero(row.get("acv"))
+        is_material = (
+            (total_acv and pct and acv / total_acv >= pct)
+            or any(row is t for t in top_objs)
+        )
+        if is_material and row_primary_blind(row):
+            row["confidence_blocked"] = True
+            row["confidence_block_reason"] = (
+                "email_data_stale"
+                if "email_data_stale" in (row.get("risk_flags") or [])
+                else "primary_connector_coverage_gap"
+            )
+            if row.get("name"):
+                blocked.append(row["name"])
+        else:
+            row["confidence_blocked"] = False
+    return ("Low" if blocked else None), sorted(set(blocked))
+
+
 def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
     """One row per deal for the hygiene (CRM data-quality) view.
 
@@ -719,6 +763,11 @@ def main():
             )
             ranking = sort_ranking(rows)
             portfolio = portfolio_for(deals, rows)
+
+            gate_cfg = model.get("pipeline", {}).get("confidence_gate", {})
+            floor, blocked_deals = apply_confidence_gate(rows, portfolio.get("total_acv"), gate_cfg)
+            portfolio["confidence_floor"] = floor
+            portfolio["confidence_blocked_deals"] = blocked_deals
 
             out = {
                 "schema_version": SCHEMA_VERSION,

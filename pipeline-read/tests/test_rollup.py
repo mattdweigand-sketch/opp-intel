@@ -165,6 +165,64 @@ def main():
               "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
     ok &= check("mode: forecast emits forecast block", fc["run"]["mode"] == "forecast" and "forecast" in fc)
 
+    # Confidence gate (NW1 regression): a MATERIAL deal whose primary evidence is blind
+    # (email_data_stale) forces portfolio.confidence_floor=Low and marks the row
+    # confidence_blocked. The small clean deal does not.
+    gate = run({"mode": "read", "deals": [
+        deal("NW1", 130000, 24, {"close_date_slipped": True, "email_data_stale": True}),
+        deal("Tiny", 8000, 24, {}),
+    ]})
+    by_name = {r["name"]: r for r in gate["ranking"]}
+    ok &= check("gate: material stale deal forces confidence_floor Low",
+                gate["portfolio"]["confidence_floor"] == "Low")
+    ok &= check("gate: blocked deal named in portfolio",
+                gate["portfolio"]["confidence_blocked_deals"] == ["NW1"])
+    ok &= check("gate: material stale row is confidence_blocked w/ reason",
+                by_name["NW1"]["confidence_blocked"] is True
+                and by_name["NW1"]["confidence_block_reason"] == "email_data_stale")
+    ok &= check("gate: clean small deal not blocked",
+                by_name["Tiny"]["confidence_blocked"] is False)
+
+    # A blind deal that is NOT material (tiny share, not top-1) does not trip the floor.
+    immaterial = run({"mode": "read", "deals": [
+        deal("BigClean", 200000, 24, {"single_threaded": True}),
+        deal("SmallStale", 5000, 24, {"email_data_stale": True}),
+    ]})
+    ok &= check("gate: immaterial blind deal does not force floor",
+                immaterial["portfolio"]["confidence_floor"] is None
+                and immaterial["portfolio"]["confidence_blocked_deals"] == [])
+
+    # Optional internal-evidence gaps (deal room) are color, not primary evidence:
+    # a material deal with only a deal_room_missing gap must NOT trip the floor.
+    room_only = run({"mode": "read", "deals": [
+        gap_deal("RoomGap", 150000, 24, {"close_date_slipped": True}, coverage_gaps=[]),
+    ]})
+    # inject an internal deal_room_missing (handled via internal_evidence source gaps path)
+    room_only2 = run({"mode": "read", "deals": [
+        {"name": "RoomGap", "stage": "X", "acv": 150000, "close_date": "2026-06-30",
+         "internal_evidence": {"deal_room": {"coverage": "deal_room_missing"}},
+         "analyze_output": {"deal_metrics": {"days_to_close": 24,
+            "flags": {"close_date_slipped": True}}}},
+    ]})
+    ok &= check("gate: deal-room-only gap does not force floor",
+                room_only2["portfolio"]["confidence_floor"] is None)
+
+    # A material deal blinded by a PRIMARY connector coverage gap does trip the floor.
+    primary_gap = run({"mode": "read", "deals": [
+        gap_deal("DegradedBig", 140000, 24, {"close_date_slipped": True},
+                 coverage_gaps=["email_connector_degraded"]),
+        deal("OtherTiny", 6000, 24, {}),
+    ]})
+    ok &= check("gate: primary-connector coverage gap on material deal forces floor",
+                primary_gap["portfolio"]["confidence_floor"] == "Low"
+                and primary_gap["portfolio"]["confidence_blocked_deals"] == ["DegradedBig"])
+
+    # Backward/identity: clean material deal -> no floor.
+    clean = run({"mode": "read", "deals": [deal("AllGood", 100000, 24, {})]})
+    ok &= check("gate: clean material deal has null floor",
+                clean["portfolio"]["confidence_floor"] is None
+                and clean["portfolio"]["confidence_blocked_deals"] == [])
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

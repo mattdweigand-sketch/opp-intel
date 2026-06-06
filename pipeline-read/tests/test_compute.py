@@ -344,6 +344,34 @@ def main():
     ok &= check("no connector_status: no *_connector_degraded gap",
                 not any(g.endswith("_connector_degraded") for g in r["coverage_gaps"]))
 
+    # Salesforce-as-witness: NextStep last-modified is a second witness. When the rep
+    # edited the next-step note more recently than anything the connectors gathered, that
+    # contradiction is a coverage gap (connectors under-collected), not a finding.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"next_step_last_modified_date": "2026-06-04"},
+        "emails": [{"direction": "in", "date": "2026-05-20"}],
+    })
+    ok &= check("witness: recent NextStep edit vs old gathered email -> activity_coverage_gap",
+                "activity_coverage_gap" in r["coverage_gaps"])
+
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"next_step_last_modified_date": "2026-05-22"},
+        "emails": [{"direction": "in", "date": "2026-05-20"}],
+    })
+    ok &= check("witness: NextStep edit within freshness gap -> no coverage gap",
+                "activity_coverage_gap" not in r["coverage_gaps"])
+
+    # Backward compat: no NextStep field -> LastActivityDate still drives the witness.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "emails": [{"direction": "in", "date": "2026-05-20"}],
+    })
+    ok &= check("witness: LastActivityDate alone still trips coverage gap (unchanged)",
+                "activity_coverage_gap" in r["coverage_gaps"])
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

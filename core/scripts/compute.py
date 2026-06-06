@@ -173,19 +173,26 @@ def main():
     latest_call = parse(snap.get("latest_call_date"))
     activity_anchor = max([d for d in (last_activity, latest_call) if d], default=None)
 
-    # Salesforce-as-witness coverage check. When Salesforce's LastActivityDate is
+    # Salesforce-as-witness coverage check. When Salesforce's own record of the deal
+    # being worked — LastActivityDate, or the date NextStep was last edited — is
     # materially newer than anything the connectors actually retrieved (newest email,
     # last inbound, latest call), that contradiction means the connectors under-
-    # collected — not that the deal went quiet. Surface it as a coverage gap, never a
-    # risk flag: it drives confidence/blindness downstream, never ranking.
+    # collected, not that the deal went quiet. NextStep is a second witness because a
+    # rep can update the next-step note (active commercial work) without that activity
+    # ever surfacing in the gathered email/call view. Surface it as a coverage gap,
+    # never a risk flag: it drives confidence/blindness downstream, never ranking.
+    next_step_modified = parse(
+        opp.get("next_step_last_modified_date") or opp.get("next_step_last_modified")
+    )
+    sf_witness = max([d for d in (last_activity, next_step_modified) if d], default=None)
     coverage_gaps = []
     gathered_latest = max(
         [d for d in (newest_email, last_inbound, latest_call) if d], default=None
     )
     activity_coverage_gap = (
-        last_activity is not None
+        sf_witness is not None
         and gathered_latest is not None
-        and (last_activity - gathered_latest).days > thresholds["freshness_gap_days"]
+        and (sf_witness - gathered_latest).days > thresholds["freshness_gap_days"]
     )
     if activity_coverage_gap:
         coverage_gaps.append("activity_coverage_gap")

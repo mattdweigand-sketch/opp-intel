@@ -164,6 +164,24 @@ def stale_anchor_errors(text, computed):
     return errors
 
 
+def confidence_floor_errors(computed, confidence):
+    """Enforce rollup.py's dollar-weighted confidence_floor. When a material deal has
+    blind primary evidence the floor is Low; a brief that claims more must fail. Backward
+    compatible: older inputs without a floor read as no constraint."""
+    portfolio = computed.get("portfolio") or {}
+    if portfolio.get("confidence_floor") != "Low":
+        return []
+    if confidence not in {"High", "Medium"}:
+        return []
+    blocked = portfolio.get("confidence_blocked_deals") or []
+    names = ", ".join(str(n) for n in blocked) if blocked else "a material deal"
+    return [
+        f"Confidence is {confidence} but the roll-up's confidence_floor is Low: material "
+        f"deal(s) have blind primary evidence ({names}). Lower confidence to Low and name "
+        f"what you could not see before trusting these deals."
+    ]
+
+
 def validate(text):
     errors = []
 
@@ -211,6 +229,7 @@ def validate(text):
         errors.append("Where you're blind section missing while stale data or coverage gaps exist.")
 
     errors.extend(stale_anchor_errors(text, computed))
+    errors.extend(confidence_floor_errors(computed, confidence))
 
     if is_hygiene:
         for heading in HYGIENE_SECTIONS:
