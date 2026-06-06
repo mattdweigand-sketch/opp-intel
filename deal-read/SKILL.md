@@ -55,8 +55,8 @@ Gmail draft policy.
 - **`../core/config/risk-model.json`** — chosen framework: scored dimensions, status enum, thresholds,
   discovery checklist. To change the model, edit this file.
 - **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping. To retarget another org, edit this.
-- **`scripts/compute.py` / `scripts/callstats.py`** — deterministic metrics, invoked by
-  `scripts/analyze.py`. Don't call them directly.
+- **`scripts/compute.py` / `scripts/callstats.py` / `scripts/transcript_extract.py`** — deterministic
+  metrics and transcript signal reduction, invoked by `scripts/analyze.py`. Don't call them directly.
 - **`scripts/validate_brief.py`** — the output-contract gate. Pipe your drafted brief (review mode) into
   it before presenting: it confirms the `Computed inputs` footer is present and parseable and that
   Confidence isn't High on stale email data. A non-zero exit means fix the brief, don't ship it.
@@ -91,14 +91,12 @@ user states otherwise; if genuinely unknown, ask once.
 
 1. Use the `zoom` params from `plan.py` for `search_meetings` (`include_zoom_my_notes: true`). Prefer
    `meeting_uuid` downstream.
-2. For the most relevant 1–3 meetings, `get_meeting_assets` (pass the UUID). Use `meeting_summary`
-   (recap + next steps) and the transcript. Extract: stated pain, objections, commitments made, next
-   steps agreed, who spoke (decision-maker present?), competitor/timeline mentions. Note the newest
-   external call's date (`latest_call_date`) and, for review mode, the saved transcript asset's file
-   path — both feed `analyze.py`. (Call-execution scoring is computed by `analyze.py`, not by reading
-   the transcript yourself.)
-3. If transcripts are large, work from `meeting_summary` first and only read transcript spans you need
-   to confirm a specific risk signal.
+2. For the most relevant 1–3 meetings, `get_meeting_assets` (pass the UUID) and save the returned
+   asset JSON to a file. Do not paste or summarize raw transcript text into the chat context. Use the
+   saved file path as `transcript_file` in `analyze.py`; it emits `call_execution` plus `call_extract`
+   with capped structured transcript buckets.
+3. Work from `meeting_summary` plus `call_extract` first. Only inspect transcript spans by source ref
+   when you need to confirm a specific risk signal.
 
 ### 3. Pull the email thread (Gmail)
 
@@ -160,7 +158,8 @@ pass `roles` (the `OpportunityContactRole.Role` values you saw), `opportunity.ec
 when `Decision_Maker__c` is populated or an Economic Buyer role exists), and `opportunity.legal_status`
 (the `Legal_Status__c` value). `compute.py` turns these into `flags.economic_buyer_named`,
 `flags.champion_identified`, and `flags.paper_not_started`. Everything below reads `analyze.py`'s output:
-`deal_metrics`, `call_execution`, `account_history`, `calendar_evidence`, and `internal_evidence`.
+`deal_metrics`, `call_execution`, `call_extract` when a transcript file was provided, `account_history`,
+`calendar_evidence`, and `internal_evidence`.
 
 Score the dimensions defined in `../core/config/risk-model.json` — read them from the file, do not work from a
 remembered list. For each dimension, compare what you observed against its `healthy` and `at_risk`
@@ -198,11 +197,11 @@ outcomes is a central data product, never something this local skill does. The `
 `../core/config/risk-model.json` is canonical on this.
 
 **Call execution (review mode).** Combine the `call_execution` block from `analyze.py` (talk ratio,
-questions, monologue, `flags.talk_ratio_high`) with a discovery-coverage read: go through
-`../core/config/risk-model.json` `call_execution.discovery_checklist` and mark which topics the rep actually covered
-(from the transcript or summary). The coachable pattern is a high talk ratio or long monologues paired
-with missed checklist items — the rep talked past the discovery. Coverage is a model judgment; the
-ratio and counts are not. `account_history` from `analyze.py` fills the brief's Account history line.
+questions, monologue, `flags.talk_ratio_high`) with `call_extract` and the meeting summary. Go through
+`../core/config/risk-model.json` `call_execution.discovery_checklist` and mark which topics the rep actually covered.
+The coachable pattern is a high talk ratio or long monologues paired with missed checklist items. Coverage is a
+model judgment from the summary plus capped transcript spans; the ratio and counts are not. `account_history`
+from `analyze.py` fills the brief's Account history line.
 
 ### 5. Output the coaching brief
 

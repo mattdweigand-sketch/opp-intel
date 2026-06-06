@@ -58,7 +58,7 @@ core/
 ├── adapters/      # Salesforce, Gmail, Calendar, calls, Slack, and Drive boundaries
 ├── config/        # risk model, Salesforce fields, depth profiles, source contracts
 ├── schemas/       # evidence bundle, analyzed deal, and rollup contracts
-├── scripts/       # plan, analyze, compute, callstats, and rollup entrypoints
+├── scripts/       # plan, evidence reduction, analyze, compute, callstats, transcript extraction, and rollup entrypoints
 ├── validators/    # separate deal and pipeline output gates
 └── tests/         # shared fixtures and parity tests
 ```
@@ -70,7 +70,9 @@ Important shared files:
 - `core/config/depth-profiles.json`
 - `core/config/source-contracts.json`
 - `core/scripts/plan.py`
+- `core/scripts/pipeline_reduce.py`
 - `core/scripts/analyze.py`
+- `core/scripts/transcript_extract.py`
 - `core/scripts/rollup.py`
 
 Surface scripts in `deal-read/scripts/` and `pipeline-read/scripts/` are compatibility wrappers into `core/`. Surface docs, modes, command routing, output shape, and write policy remain surface-owned.

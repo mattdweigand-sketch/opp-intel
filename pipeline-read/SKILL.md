@@ -81,9 +81,10 @@ which evidence is missing and how that limits confidence across the affected dea
 
 This surface is thin. Shared mechanics live in `../core/`; the local `scripts/` files are compatibility
 wrappers that delegate there. This SKILL.md owns command routing, mode choice, portfolio output shape,
-and the no-write policy. You invoke three wrapper scripts directly: `scripts/plan.py` (what to query,
-both phases), `scripts/analyze.py` (per-deal processing, once per deal), and `scripts/rollup.py` (the
-pipeline aggregation, once over all deals).
+and the no-write policy. You invoke four wrapper scripts directly: `scripts/plan.py` (what to query,
+both phases), `scripts/pipeline_reduce.py` (per-deal evidence reduction), `scripts/analyze.py`
+(per-deal processing, once per deal), and `scripts/rollup.py` (the pipeline aggregation, once over all
+deals).
 
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
@@ -92,9 +93,12 @@ pipeline aggregation, once over all deals).
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
   batched `contact_roles_bulk` query and the `champion_roles` list.
-- **`scripts/analyze.py`** — the per-deal processing entrypoint. Feed it one
-  deal's bundle; it runs `compute.py` + `callstats.py` and parses account history. Run it once per
-  in-scope deal.
+- **`scripts/pipeline_reduce.py`** — the per-deal evidence boundary. Feed it saved connector payloads
+  for one deal; it emits a compact `analyze.py` bundle plus evidence metadata. `source_ref` is an audit
+  trail, not routine roll-up context.
+- **`scripts/analyze.py`** — the per-deal processing entrypoint. Feed it the reduced bundle from
+  `pipeline_reduce.py`; it runs `compute.py` + `callstats.py` and parses account history. Run it once
+  per in-scope deal.
 - **`scripts/rollup.py`** — the pipeline aggregator. Feed it every per-deal `analyze.py` output; it
   ranks deals by severity of current evidence, computes portfolio and forecast aggregates, emits
   deterministic recommendation labels, and compares against a prior Computed inputs artifact when
@@ -105,8 +109,8 @@ pipeline aggregation, once over all deals).
 - **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping, including `pipeline_scope`,
   amount basis, forecast category convention, and internal source mapping fields. To retarget another
   org, edit this.
-- **`scripts/compute.py` / `scripts/callstats.py`** — deterministic metrics, invoked by `analyze.py`.
-  Don't call them directly.
+- **`scripts/compute.py` / `scripts/callstats.py` / `scripts/transcript_extract.py`** — deterministic
+  metrics and transcript signal reduction, invoked by `analyze.py`. Don't call them directly.
 - **`scripts/validate_brief.py`** — the output-contract gate. Pipe your drafted brief into it before
   presenting: it confirms the `Computed inputs` footer is `rollup.py` output, the schema is present,
   stale or missing evidence limits confidence, and forecast-mode sections are present. A non-zero exit
@@ -185,15 +189,17 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    the window — it was returned because it holds an in-window message; expand it. Asserting
    `email_data_stale` (or "went quiet") off a stale snippet date, while a fresh reply sits deeper in the
    same thread, is the exact regression this rule prevents.
-3. Build the per-deal bundle and run
-   `python3 <skill-dir>/scripts/analyze.py < bundle.json` once per deal. For `compute_input`, pass
-   `observed_participants` and `logged_contact_roles` (not a pre-counted contact total),
-   `stage_entered_date`, `close_date_history`, and `latest_call_date` when available — same contract as
-   `deal-read`. Keep each deal's `analyze.py` output; you feed them all to `rollup.py` next.
-4. Note for each deal a `latest_call_date` and the email list (direction + date), so `analyze.py`
-   computes freshness and latency deterministically. When `flags.email_data_stale` is true for a deal,
-   that deal's email view is lagging: say so and lower its confidence rather than asserting it went
-   quiet.
+3. Save raw connector payloads to per-deal files and run
+   `python3 <skill-dir>/scripts/pipeline_reduce.py < gather.json`. The reducer accepts saved
+   `email_threads_file`, `calendar_evidence_file`, `zoom_meetings_file`, and `internal_evidence_file`
+   paths, plus `compute_input`, `prior_opps`, `connector_status`, `internal_domains`, and optional
+   `prospect_domains`. It emits the compact bundle for `analyze.py`; do not paste raw email bodies,
+   Slack messages, or meeting payloads into the orchestration context.
+4. Run `python3 <skill-dir>/scripts/analyze.py < reduced-bundle.json` once per deal. The reduced
+   `compute_input` contains the email list (direction + date), `observed_participants`, and
+   `latest_call_date` when available, so `analyze.py` computes freshness and latency deterministically.
+   When `flags.email_data_stale` is true for a deal, that deal's email view is lagging: say so and lower
+   its confidence rather than asserting it went quiet.
 5. Whenever internal evidence is on (the default in every mode unless `--internal off`), add
    `internal_evidence` to the per-deal `analyze.py` bundle when Slack or linked
    proposal-doc evidence was gathered. Preserve source refs. Slack/Drive evidence can affect confidence,
@@ -201,9 +207,10 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    truth: amount, stage, close date, owner, or forecast category.
 
 **Per-deal isolation contract (portable — every agent satisfies this, however it executes the loop).**
-The per-deal work is a self-contained unit: gather that one deal's metadata, run `analyze.py` on it, and
-**emit only a compact result** — the deal's `analyze.py` JSON output plus a short list of cited evidence
-strings (e.g. `latest_call_date`, last inbound/outbound email date, the one load-bearing SF note). The
+The per-deal work is a self-contained unit: gather that one deal's metadata, reduce it, run `analyze.py`
+on the reduced bundle, and **emit only a compact result** — the deal's `analyze.py` JSON output plus
+`pipeline_reduce.py`'s `evidence_summary` metadata (e.g. latest call date, last inbound/outbound email
+date, and source refs). The
 raw connector payloads (transcripts, thread bodies, full task lists) stay inside the per-deal step and
 **must not flow into the roll-up context**. The orchestrating step collects these compact results and
 feeds them to `rollup.py` once (§4); it never holds raw bodies. This keeps a full run's context to N
@@ -237,8 +244,8 @@ requirements bind every per-deal subagent:
 > message, multiple `Agent` calls) so the deals gather in parallel and each deal's raw payload lands in
 > that subagent's throwaway context, not the orchestrator's. Give each subagent a **narrow** prompt: the
 > deal-context dict, "follow SKILL.md §2–3 steps 1–4, metadata only," and the return contract — "reply
-> with **only** this deal's `analyze.py` JSON output plus the cited evidence strings; do not include raw
-> transcripts or email bodies." The orchestrator collects the compact replies and runs `rollup.py` once
+> with **only** this deal's `analyze.py` JSON output plus `pipeline_reduce.py`'s `evidence_summary`; do
+> not include quotes, raw transcripts, or email bodies." The orchestrator collects the compact replies and runs `rollup.py` once
 > over them (§4). This is execution mechanism, not policy: the contract above is what binds, and a raw-
 > API harness or another agent that loops inline is equally correct as long as raw bodies never reach the
 > roll-up.
@@ -300,8 +307,8 @@ Assemble the roll-up bundle and run it once:
 }
 ```
 The `name`, `stage`, `acv`, and `close_date` come straight from the §1 portfolio list the orchestrator
-already holds — the per-deal step only owes you `analyze_output` plus its cited evidence, so a subagent
-need not echo the deal facts back. For `acv`, pass the deal's real ACV from the opp record (the
+already holds — the per-deal step only owes you `analyze_output` plus `evidence_summary` metadata, so a
+subagent need not echo the deal facts back. For `acv`, pass the deal's real ACV from the opp record (the
 `Added_ARR__c` you queried). For forecast mode, also pass the configured amount field and forecast
 category from the same Salesforce portfolio row. If the user supplied `--compare`, load that file as
 JSON and pass the parsed object as `prior_rollup` (or a path as `compare_file`). It must be a prior
@@ -432,6 +439,8 @@ Rules:
   current-state CRM history.
 - Every Slack or Drive claim needs the source ref captured in `internal_evidence.signals`; omit claims
   without a source ref.
+- Pipeline-read should not use direct quotes by default. `source_ref` is for audit trail and manual
+  drill-back only, not routine context.
 - Slack and Drive can sharpen confidence, risk notes, evidence gaps, internal owner, and next move. They
   cannot override Salesforce-owned amount, stage, close date, owner, or forecast category.
 - Same computed footer and validate gate as §5. Forecast briefs must pass

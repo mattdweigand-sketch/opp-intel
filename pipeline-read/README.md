@@ -195,10 +195,12 @@ pipeline-read/
 │   └── pipeline-hygiene/SKILL.md   #   runs the engine in hygiene mode (SF-only) → §5-hygiene
 ├── scripts/           # Compatibility wrappers into ../core/scripts and ../core/validators
 │   ├── plan.py        #   emits the portfolio query + per-deal queries
+│   ├── pipeline_reduce.py # reduces raw per-deal connector payloads before analyze.py
 │   ├── analyze.py     #   per-deal processing entrypoint (copied from deal-read)
 │   ├── rollup.py      #   ranks deals, computes forecast rollups, compares snapshots
 │   ├── compute.py     #   deal metrics (called by analyze.py; from deal-read)
 │   ├── callstats.py   #   call-execution metrics (called by analyze.py; from deal-read)
+│   ├── transcript_extract.py # transcript signal reducer (available for shared compatibility)
 │   └── validate_brief.py # output-contract gate run on the drafted brief
 ../core/config/        # Shared owned data
 ├── risk-model.json    # dimensions, thresholds, pipeline/forecast/internal/hygiene config
