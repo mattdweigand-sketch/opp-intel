@@ -1,6 +1,6 @@
 # Deal Read
 
-Deal-risk coaching for a single sales opportunity. Deal Read synthesizes a rep's own Salesforce data, Zoom recordings, Gmail threads, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a brief that names where one deal is at risk and the specific next actions to de-risk it. The only write it can make is a Gmail draft, never sent, and only on confirmation.
+Deal-risk coaching for a single sales opportunity. Deal Read synthesizes a rep's own Salesforce data, Gmail threads, Google Calendar meetings, Zoom recordings, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a brief that names where one deal is at risk and the specific next actions to de-risk it. The only write it can make is a Gmail draft, never sent, and only on confirmation.
 
 ---
 
@@ -33,7 +33,7 @@ The economic-buyer, champion, and paper/legal-status risks are read from structu
 ## Getting Started
 
 1. Point an agent at the repo. Claude Code reads `CLAUDE.md` automatically; any other agent starts at `AGENTS.md`, then `CONTEXT.md`.
-2. Connect Salesforce, Zoom, Gmail, Slack, and Google Drive. Slack and Drive are read-only internal evidence sources.
+2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive. Calendar, Slack, and Drive are read-only evidence sources.
 3. Ask: `/deal-read <opportunity or account name>`.
 4. For a call you have coming up: `/deal-read <deal> --prep`.
 

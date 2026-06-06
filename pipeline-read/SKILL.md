@@ -1,6 +1,6 @@
 ---
 name: pipeline-read
-description: Shared engine for /pipeline-triage, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - triage (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Zoom, Gmail, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
+description: Shared engine for /pipeline-triage, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - triage (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
 ---
 
 # Pipeline Read
@@ -32,7 +32,7 @@ but do not use them unless the user asks.
 (email, calls, internal rooms). Hygiene asks "is the Salesforce *record* clean?" — contacts logged, a
 champion role set, `NextStep` and amount filled, activity recent. A deal can be commercially healthy
 with filthy CRM data, or have clean data on a dying deal, so hygiene has its own flags, its own ranking,
-and a deliberately **cheaper, Salesforce-only gather** (no Zoom, Gmail, Slack, or Drive; see §2-3-hygiene).
+and a deliberately **cheaper, Salesforce-only gather** (no Gmail, Calendar, Zoom, Slack, or Drive; see §2-3-hygiene).
 Like the old `pipeline-health`, it proposes **no fixes or next moves** — that is the clean line versus
 triage.
 
@@ -63,6 +63,7 @@ All reads are read-only. **`pipeline-read` makes no writes**. Drafting a follow-
 that lives in `deal-read`.
 
 - **Salesforce** — `getUserInfo`, `getObjectSchema`, `find`, `soqlQuery`, `getRelatedRecords`
+- **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`
 - **Slack** — mapped deal-room reads only in `internal=auto`; bounded fallback lookup only in
@@ -70,7 +71,7 @@ that lives in `deal-read`.
 - **Google Drive** — proposal docs linked from the mapped Slack room or explicit deal context only
 
 **Hygiene mode is Salesforce-only.** It reads the portfolio list plus one batched
-`OpportunityContactRole` query; it does not touch Zoom, Gmail, Slack, or Drive. The other connectors
+`OpportunityContactRole` query; it does not touch Gmail, Calendar, Zoom, Slack, or Drive. The other connectors
 above apply to triage and forecast only.
 
 If a connector is not authorized, say so and proceed with the sources you have. Note in the brief
@@ -129,7 +130,7 @@ pipeline aggregation, once over all deals).
 3. **Large-run guardrail.** Count the returned opps. If the count exceeds `large_run_threshold`, list
    them (name, stage, ACV, close date) and confirm with the rep before gathering — in triage and
    forecast each in-scope deal fans out its own subagent hitting the connectors in `plan.py`'s
-   `per_deal_connectors` (Salesforce, Gmail, and Zoom always; Slack and Google Drive whenever internal
+   `per_deal_connectors` (Salesforce, Gmail, Google Calendar, and Zoom always; Slack and Google Drive whenever internal
    evidence is on, which is the default in those modes unless `--internal off` is passed). State that
    connector list verbatim from `per_deal_connectors`; do not recite it from memory, since the set
    shifts with the resolved mode. A large set means that many parallel connector runs at once. Offer to
@@ -146,7 +147,7 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    `{"opp_id","account_id","account_name","contact_emails":[...],"created_date","today","forecast":true,
    "internal":"auto|off|force","Slack_Channel__c","Deal_Room_URL__c"}` as applicable. Execute the
    returned Salesforce (`opportunity`, `contact_roles`, `account_contacts`, `tasks`, `history`,
-   `prior_account_opps`), Gmail (`sent_freshness` + `thread_search`), Zoom (`search_meetings`), and
+   `prior_account_opps`), Gmail (`sent_freshness` + `thread_search`), Calendar (`calendar`), Zoom (`search_meetings`), and
    bounded internal-evidence instructions.
 
    **Contact union before Gmail search.** After running `contact_roles` and `account_contacts`, union

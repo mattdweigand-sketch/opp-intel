@@ -5,7 +5,7 @@ description: Deal-risk coaching for a single sales opportunity. Synthesizes the 
 
 # Deal Read
 
-Coach one rep on one deal. Pull that rep's own Salesforce, Zoom, Gmail, mapped Slack deal-room, and
+Coach one rep on one deal. Pull that rep's own Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal-room, and
 linked Google Drive proposal-doc evidence for a named opportunity, run it through a deal-risk model,
 and return the top risks with concrete next actions. Each action ties to evidence from a real call,
 email, Salesforce field, Slack source, or proposal doc. Never writes to Salesforce, sends mail,
@@ -28,6 +28,7 @@ Five connectors. All reads are read-only. The one write this skill can make is c
 **draft** (never sending), and only on explicit user confirmation (see §6).
 
 - **Salesforce** — `getObjectSchema`, `find`, `soqlQuery`, `getRelatedRecords`, `getUserInfo`
+- **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`; `create_draft` (draft only, §6)
 - **Slack** — mapped deal-room lookup by default; pass internal=force for bounded fallback lookup

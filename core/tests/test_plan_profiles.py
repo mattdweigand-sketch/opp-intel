@@ -49,15 +49,20 @@ def main():
 
     pipeline = run_plan({"deal_name": "Acme", "opp_id": "006X", "account_id": "001X"}, surface="pipeline-read")
     ok &= check("pipeline per-deal plan: contact query preserved", "account_contacts" in pipeline["salesforce"])
+    ok &= check("deal plan: calendar emitted", deal["calendar"]["source"] == "google_calendar")
+    ok &= check("pipeline plan: calendar emitted", pipeline["calendar"]["source"] == "google_calendar")
 
     hygiene = run_plan({"mode": "pipeline", "hygiene": True, "today": "2026-06-04", "owner_id": "005XX"})
     ok &= check("hygiene plan: Salesforce only", hygiene["per_deal_connectors"] == ["Salesforce"])
 
     zoom = load_adapter("calls_zoom")
     gong = load_adapter("calls_gong")
+    calendar = load_adapter("calendar")
     ok &= check("zoom adapter: current provider", zoom.plan("deal")["provider"] == "zoom")
     ok &= check("gong adapter: contract only", gong.plan("pipeline")["status"] == "contract_only")
+    ok &= check("calendar adapter: deal history and future", calendar.plan("deal")["future"] == "upcoming_meetings")
     ok &= check("gmail off for hygiene", raises(lambda: load_adapter("gmail").plan("hygiene")))
+    ok &= check("calendar off for hygiene", raises(lambda: load_adapter("calendar").plan("hygiene")))
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

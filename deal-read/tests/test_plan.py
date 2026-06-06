@@ -38,6 +38,9 @@ def main():
     ok &= check("history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
     ok &= check("gmail thread_search uses emails", "a@x.com" in full["gmail"]["thread_search"])
+    ok &= check("calendar emitted", full["calendar"]["source"] == "google_calendar")
+    ok &= check("calendar uses attendees", "a@x.com" in full["calendar"]["query"]["attendees"])
+    ok &= check("calendar has future lookup", full["calendar"]["future"]["to"] == "next 60 days")
     ok &= check("zoom q set", full["zoom"]["q"] == "Providence Investments")
     ok &= check("contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")
     ok &= check("contact_roles read_fields includes Role", "Role" in full["salesforce"]["contact_roles"]["read_fields"])
@@ -51,6 +54,9 @@ def main():
     ok &= check("early: no opp query yet", "opportunity" not in early["salesforce"])
     ok &= check("early: sent_freshness still present", "sent_freshness" in early["gmail"])
     ok &= check("early: no thread_search without emails", "thread_search" not in early["gmail"])
+    ok &= check("early: calendar uses deal name", early["calendar"]["query"]["terms"] == ["NW1"])
+    empty = run({})
+    ok &= check("empty: calendar gap named", empty["calendar"]["coverage"] == "insufficient_context")
 
     # Internal evidence (Slack + Drive) — auto is mapped-room only; force permits fallback.
     auto = run({"account_name": "Providence Investments"})

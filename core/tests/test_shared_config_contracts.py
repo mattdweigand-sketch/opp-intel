@@ -30,13 +30,17 @@ def main():
     ok &= check("shared risk thresholds exist", model["thresholds"]["email_window_days"] == 90)
     ok &= check("deal legal status preserved", "legal_status" in model)
     ok &= check("pipeline config exists", "pipeline" in model and "flag_severity" in model["pipeline"])
-    ok &= check("hygiene remains SF-only", profiles["hygiene"]["email"] == "off" and profiles["hygiene"]["calls"] == "off")
+    ok &= check("hygiene remains SF-only",
+                profiles["hygiene"]["email"] == "off"
+                and profiles["hygiene"]["calendar"] == "off"
+                and profiles["hygiene"]["calls"] == "off")
     ok &= check("deal profile is one opportunity", profiles["deal"]["scope"] == "one_opportunity")
     ok &= check("pipeline profile is many opportunities", profiles["pipeline"]["scope"] == "many_opportunities")
     ok &= check("shared sf fields preserve deal depth", "Decision_Maker__c" in fields["opportunity_fields"])
     ok &= check("shared sf fields include pipeline scope", "pipeline_scope" in fields)
     ok &= check("contact role grounding preserved", {"Role", "IsPrimary"}.issubset(set(fields["contact_fields"])))
     ok &= check("read-only source contract", contracts["read_policy"]["sources_are_read_only"] is True)
+    ok &= check("calendar source contract", contracts["sources"]["calendar"]["profiles"] == ["deal", "pipeline"])
     ok &= check("deal draft confirmation contract",
                 contracts["read_policy"]["deal_read_gmail_draft"] == "explicit_user_confirmation_only")
 

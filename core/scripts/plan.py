@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit the exact Salesforce/Gmail/Zoom queries for a pipeline-read run.
+"""Emit the exact Salesforce/Gmail/Calendar/Zoom queries for a pipeline-read run.
 
 Two phases share this one script:
 
@@ -12,7 +12,7 @@ Two phases share this one script:
 
   2. PER-DEAL phase — identical to deal-read: the model loops the in-scope opps and, for each,
      calls plan.py with that deal's context to get its opp/roles/tasks/history/prior + Gmail +
-     Zoom queries. Same code path as deal-read so the per-deal plan stays in lockstep.
+     Calendar + Zoom queries. Same code path as deal-read so the per-deal plan stays in lockstep.
 
 The model still EXECUTES the queries (only it can call the MCP connectors); it never improvises
 them. Field names come from sf-fields.json, windows from risk-model.json.
@@ -224,6 +224,50 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
     return out
 
 
+def calendar_plan(ctx, model, profile="pipeline"):
+    """Emit read-only Google Calendar lookups for historical and future meetings."""
+    cfg = (model.get("calendar") or {}).get(profile, {})
+    if not cfg or cfg == "off":
+        return None
+
+    terms = dedupe([
+        ctx.get("account_name"),
+        ctx.get("deal_name"),
+        ctx.get("opportunity_name"),
+        *([str(h) for h in ctx.get("calendar_hints", [])] if ctx.get("calendar_hints") else []),
+    ])
+    emails = ctx.get("contact_emails") or []
+    if not terms and not emails:
+        return {
+            "source": "google_calendar",
+            "coverage": "insufficient_context",
+            "source_gaps": ["calendar_context_missing"],
+            "read_only": True,
+        }
+
+    lookback_days = int(ctx.get("calendar_history_days") or cfg.get("history_days", 180))
+    lookahead_days = int(ctx.get("calendar_future_days") or cfg.get("future_days", 60))
+    return {
+        "source": "google_calendar",
+        "query": {
+            "terms": terms,
+            "attendees": emails,
+        },
+        "history": {
+            "from": ctx.get("created_date") or f"last {lookback_days} days",
+            "to": ctx.get("today", "now"),
+            "max_events": int(cfg.get("max_historical_events", 10)),
+        },
+        "future": {
+            "from": ctx.get("today", "now"),
+            "to": f"next {lookahead_days} days",
+            "max_events": int(cfg.get("max_future_events", 10)),
+        },
+        "read": cfg.get("read", ["title", "time", "attendees", "conference_link"]),
+        "read_only": True,
+    }
+
+
 def pipeline_plan(ctx):
     fields = load("sf-fields.json")
     model = load("risk-model.json")
@@ -245,10 +289,11 @@ def pipeline_plan(ctx):
 
     # Connectors that each per-deal subagent will hit, derived from the resolved mode so
     # the large-run confirmation prompt is accurate on every run instead of recited from
-    # prose. Hygiene hits Salesforce only; triage/forecast add Gmail/Zoom, plus Slack and
-    # Google Drive when internal evidence is on (forecast default, or --internal auto|force).
+    # prose. Hygiene hits Salesforce only; triage/forecast add Gmail/Calendar/Zoom, plus
+    # Slack and Google Drive when internal evidence is on (forecast default, or
+    # --internal auto|force).
     # See SKILL.md §1.3.
-    per_deal_connectors = ["Salesforce"] if hygiene else ["Salesforce", "Gmail", "Zoom"]
+    per_deal_connectors = ["Salesforce"] if hygiene else ["Salesforce", "Gmail", "Google Calendar", "Zoom"]
     if internal:
         per_deal_connectors += ["Slack", "Google Drive"]
 
@@ -366,6 +411,8 @@ def deal_plan(ctx, profile="pipeline"):
             "Read full thread bodies, not metadata only."
         ).replace("{window}", str(window))
 
+    calendar = calendar_plan(ctx, model, profile=profile)
+
     zoom = {}
     if ctx.get("account_name"):
         zoom = {
@@ -376,6 +423,8 @@ def deal_plan(ctx, profile="pipeline"):
         }
 
     out = {"salesforce": sf, "gmail": gmail, "zoom": zoom}
+    if calendar:
+        out["calendar"] = calendar
     internal = internal_plan(ctx, fields, model, profile=profile)
     if internal:
         out["internal_evidence"] = internal

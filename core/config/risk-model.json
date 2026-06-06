@@ -24,6 +24,23 @@
       "Concrete next step with a date set"
     ]
   },
+  "calendar": {
+    "_comment": "Read-only Google Calendar lookup. Used for historical meeting context and upcoming scheduled meetings. Hygiene remains Salesforce-only.",
+    "deal": {
+      "history_days": 180,
+      "future_days": 60,
+      "max_historical_events": 10,
+      "max_future_events": 10,
+      "read": ["title", "time", "attendees", "organizer", "conference_link", "description_snippet"]
+    },
+    "pipeline": {
+      "history_days": 90,
+      "future_days": 30,
+      "max_historical_events": 3,
+      "max_future_events": 3,
+      "read": ["title", "time", "attendees", "conference_link"]
+    }
+  },
   "pipeline": {
     "_comment": "Pipeline-level roll-up controls. 'flag_severity' is a chosen ordering of compute.py's per-deal flags into tiers, used to rank deals by severity of current evidence. It is not a predictive weight.",
     "scope": {

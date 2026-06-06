@@ -16,7 +16,7 @@ The repo exists so the two surfaces can share source planning, config, determini
 
 `deal-read` is the single-opportunity coaching workflow.
 
-It reads Salesforce, Zoom, Gmail, mapped Slack deal rooms, and linked Google Drive proposal docs for one deal. It returns a short risk brief with confidence, account history, top risks, what is going well, call-execution signals, internal evidence, and the next move.
+It reads Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, and linked Google Drive proposal docs for one deal. It returns a short risk brief with confidence, account history, top risks, what is going well, call-execution signals, internal evidence, and the next move.
 
 Use it when the question is about one deal:
 
@@ -47,7 +47,7 @@ Use it when the question is about many deals:
 
 `/pipeline-forecast` is the forecast-call view. It rolls the same per-deal reads into forecast posture, category rollup, recommendation labels, movement from a prior computed-inputs artifact, internal evidence coverage, and evidence gaps.
 
-`/pipeline-hygiene` is the CRM data-quality view. It is deliberately Salesforce-only. It checks whether the Salesforce record is clean and names the dominant data gap. It does not inspect Zoom, Gmail, Slack, or Drive, and it does not propose fixes.
+`/pipeline-hygiene` is the CRM data-quality view. It is deliberately Salesforce-only. It checks whether the Salesforce record is clean and names the dominant data gap. It does not inspect Gmail, Calendar, Zoom, Slack, or Drive, and it does not propose fixes.
 
 ## Shared core
 
@@ -79,14 +79,14 @@ Surface scripts in `deal-read/scripts/` and `pipeline-read/scripts/` are compati
 
 The core has explicit depth profiles:
 
-- `deal`: one-opportunity deep read across Salesforce, Zoom, Gmail, Slack, and Drive.
+- `deal`: one-opportunity deep read across Salesforce, Gmail, Calendar, Zoom, Slack, and Drive.
 - `pipeline`: multi-opportunity read that stays shallow enough to run across a full pipeline.
 - `hygiene`: Salesforce-only scan for CRM record quality.
 
 The source boundary is intentional:
 
 - Salesforce owns opportunity truth: amount, stage, close date, owner, forecast category, contacts, next step, legal status, and CRM hygiene fields.
-- Zoom, Gmail, Slack, and Drive add evidence, confidence, gaps, and next-move context.
+- Gmail, Calendar, Zoom, Slack, and Drive add evidence, confidence, gaps, and next-move context.
 - Slack and Drive evidence must stay bounded to mapped rooms and linked docs unless the pipeline mode explicitly asks for bounded fallback lookup.
 - Hygiene remains Salesforce-only.
 

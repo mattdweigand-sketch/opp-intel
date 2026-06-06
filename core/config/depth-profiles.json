@@ -8,6 +8,11 @@
       "max_threads": 10,
       "sent_freshness": true
     },
+    "calendar": {
+      "history": "historical_meetings",
+      "future": "upcoming_meetings",
+      "detail": "titles_attendees_times_and_conference_links"
+    },
     "calls": {
       "max_calls": 3,
       "detail": "summary_plus_transcript",
@@ -33,6 +38,11 @@
       "max_threads": 3,
       "sent_freshness": true
     },
+    "calendar": {
+      "history": "recent_meeting_presence",
+      "future": "upcoming_meeting_presence",
+      "detail": "metadata_only"
+    },
     "calls": {
       "max_calls": 1,
       "detail": "summary_first",
@@ -54,6 +64,7 @@
     "scope": "many_opportunities",
     "salesforce": "portfolio_scope_plus_contact_roles",
     "email": "off",
+    "calendar": "off",
     "calls": "off",
     "slack": "off",
     "drive": "off",

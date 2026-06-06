@@ -37,7 +37,7 @@
     "order_by": "CloseDate ASC"
   },
   "hygiene_scope": {
-    "_comment": "SF-only hygiene scan. No Zoom, Gmail, Slack, or Drive.",
+    "_comment": "SF-only hygiene scan. No Gmail, Calendar, Zoom, Slack, or Drive.",
     "contact_roles_sobject": "OpportunityContactRole",
     "contact_roles_fields": ["OpportunityId", "Role", "IsPrimary", "Contact.Name", "Contact.Email"],
     "opportunity_id_field": "OpportunityId"

@@ -36,8 +36,8 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: triage default runs Slack/Drive (config default force)",
-                p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Zoom", "Slack", "Google Drive"])
+    ok &= check("pipeline: triage default runs Calendar and Slack/Drive (config default force)",
+                p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
     pq = run({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
@@ -89,8 +89,8 @@ def main():
     ok &= check("forecast: amount field selected", "Added_ARR__c" in fq)
     ok &= check("forecast: no phantom mapping fields in pipeline query", "Slack_Channel__c" not in fq and "Deal_Room_URL__c" not in fq)
     ok &= check("forecast: default internal is force", pf["forecast"]["internal"] == "force")
-    ok &= check("forecast: connectors include Slack and Drive when internal on",
-                pf["per_deal_connectors"] == ["Salesforce", "Gmail", "Zoom", "Slack", "Google Drive"])
+    ok &= check("forecast: connectors include Calendar, Slack, and Drive when internal on",
+                pf["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     poff = run({
         "mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX",
@@ -99,8 +99,8 @@ def main():
     ok &= check("internal off: no internal plan emitted", "internal_evidence" not in poff)
     ok &= check("internal off: no Slack mapping fields selected",
                 "Slack_Channel__c" not in poff["salesforce"]["pipeline"])
-    ok &= check("internal off: connectors exclude Slack/Drive",
-                poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Zoom"])
+    ok &= check("internal off: connectors exclude Slack/Drive but keep Calendar",
+                poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom"])
 
     # --- Per-deal phase: unchanged deal-read contract (no mode key => deal plan).
     full = run({
@@ -115,6 +115,8 @@ def main():
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
+    ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")
     ok &= check("per-deal: zoom q set", full["zoom"]["q"] == "Providence Investments")
 

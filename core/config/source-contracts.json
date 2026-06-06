@@ -5,6 +5,7 @@
     "deal_read_gmail_draft": "explicit_user_confirmation_only",
     "no_email_send": true,
     "no_salesforce_edit": true,
+    "no_calendar_edit": true,
     "no_slack_post": true,
     "no_drive_edit": true
   },
@@ -17,6 +18,11 @@
     "gmail": {
       "plan": "emit_thread_and_sent_freshness_plan",
       "normalize": "email_evidence",
+      "profiles": ["deal", "pipeline"]
+    },
+    "calendar": {
+      "plan": "emit_historical_and_future_meeting_lookup",
+      "normalize": "calendar_evidence",
       "profiles": ["deal", "pipeline"]
     },
     "calls": {

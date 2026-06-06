@@ -36,6 +36,25 @@
       "to": "2026-06-03",
       "include_zoom_my_notes": true
     },
+    "calendar": {
+      "source": "google_calendar",
+      "query": {
+        "terms": ["Providence Investments"],
+        "attendees": ["a@x.com", "b@x.com"]
+      },
+      "history": {
+        "from": "2026-05-21",
+        "to": "2026-06-03",
+        "max_events": 10
+      },
+      "future": {
+        "from": "2026-06-03",
+        "to": "next 60 days",
+        "max_events": 10
+      },
+      "read": ["title", "time", "attendees", "organizer", "conference_link", "description_snippet"],
+      "read_only": true
+    },
     "internal_evidence": {
       "mode": "auto",
       "window_days": 30,

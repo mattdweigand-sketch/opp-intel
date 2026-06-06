@@ -1,7 +1,7 @@
 # Pipeline Read
 
 Pipeline Read triages forecast risk across a rep's whole pipeline. It is the pipeline-level sibling of
-[Deal Read](../deal-read): it pulls the rep's own Gmail threads, Zoom recordings, Salesforce data,
+[Deal Read](../deal-read): it pulls the rep's own Gmail threads, Google Calendar meetings, Zoom recordings, Salesforce data,
 mapped Slack deal rooms, and linked Google Drive proposal docs for every open opportunity closing in
 JSQ's current fiscal quarter by default. It runs each deal through the same deal-risk model, then rolls
 the results into one ranked triage: which deals are most at risk, the dominant risk on each with cited
@@ -21,7 +21,7 @@ Pipeline Read has three views, all over the same engine. The mode is set by the 
 - `/pipeline-hygiene`: the CRM data-quality view. It asks a different question — not "is this deal at
   risk?" but "is the Salesforce *record* clean?" — and tags each opp with its single dominant data gap
   (no contacts, single-threaded, no champion, missing amount, missing next step, stale activity,
-  overdue close). It is deliberately cheap and **Salesforce-only**: no Zoom, Gmail, Slack, or Drive, and
+  overdue close). It is deliberately cheap and **Salesforce-only**: no Gmail, Calendar, Zoom, Slack, or Drive, and
   no per-deal fan-out, so it stays fast even on a large pipeline. It names gaps and **proposes no fixes**
   — that is the clean line versus triage. (This replaces the standalone `pipeline-health` skill.)
 
@@ -101,9 +101,9 @@ deal rooms only.
 
 1. Point an agent at the repo. Claude Code reads `CLAUDE.md` automatically; any other agent starts at
    `AGENTS.md`, then `CONTEXT.md`.
-2. Connect Salesforce, Zoom, Gmail, Slack, and Google Drive (all read-only). Slack and Google Drive are
-   part of the default evidence lane in every mode; if you skip them, run with `--internal off` or the
-   affected deals are flagged as missing that evidence.
+2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Gmail,
+   Calendar, and Zoom are always part of triage and forecast. Slack and Google Drive are the internal
+   evidence lane; use `--internal off` only to skip those internal sources.
 3. Ask: `/pipeline-triage` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
@@ -112,7 +112,7 @@ Deal Read installed. For single-deal depth, use
 [Deal Read](https://github.com/mattdweigand-sketch/deal-read).
 
 A full read loops the per-deal connectors `plan.py` reports in `per_deal_connectors`: Salesforce,
-Gmail, and Zoom always, plus Slack and Google Drive whenever internal evidence is on. The default scope
+Gmail, Google Calendar, and Zoom always, plus Slack and Google Drive whenever internal evidence is on. The default scope
 is JSQ's current fiscal quarter. JSQ's fiscal year starts Feb 1, so quarters run Feb-Apr, May-Jul,
 Aug-Oct, and Nov-Jan. The skill confirms before running when more than ~15 deals are in scope.
 

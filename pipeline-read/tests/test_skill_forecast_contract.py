@@ -24,6 +24,7 @@ def main():
         "--compare <prior-computed-inputs.json>",
         "--internal auto|off|force",
         "Slack",
+        "Google Calendar",
         "Google Drive",
         "forecast.category_rollup",
         "forecast.recommendations",

@@ -39,6 +39,7 @@ Required connectors:
 
 - Salesforce: opportunity truth, CRM fields, and hygiene mode
 - Gmail: email freshness and thread evidence
+- Google Calendar: historical and future meeting context
 - Zoom: current implemented call provider
 - Slack: mapped deal-room evidence
 - Google Drive: linked proposal and deal-room documents

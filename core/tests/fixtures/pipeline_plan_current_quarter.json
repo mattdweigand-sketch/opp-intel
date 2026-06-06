@@ -21,7 +21,7 @@
       "close_on_or_before": "2026-07-31"
     },
     "large_run_threshold": 15,
-    "per_deal_connectors": ["Salesforce", "Gmail", "Zoom", "Slack", "Google Drive"],
+    "per_deal_connectors": ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"],
     "internal_evidence": {
       "mode": "force",
       "window_days": 30,
