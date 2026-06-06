@@ -11,3 +11,7 @@ __pycache__/
 *$py.class
 
 forecast-2026-06-05-two-closest.md
+
+# Generated local pipeline run artifacts.
+pipeline-read/brief.md
+pipeline-read/rollup_bundle.json
