@@ -144,30 +144,9 @@ pipeline hygiene scoring
 
 Do not add local win-probability modeling here. If that ever exists, it belongs in a separate pooled data product.
 
-## Team setup
+## Setup
 
-Clone the repo wherever you keep team projects. Then register the local Claude commands from that checkout:
-
-```bash
-scripts/register-claude-skills.sh
-```
-
-The script creates symlinks under `~/.claude/skills`:
-
-```text
-~/.claude/skills/deal-read -> <repo>/deal-read
-~/.claude/skills/pipeline-triage -> <repo>/pipeline-read/commands/pipeline-triage
-~/.claude/skills/pipeline-forecast -> <repo>/pipeline-read/commands/pipeline-forecast
-~/.claude/skills/pipeline-hygiene -> <repo>/pipeline-read/commands/pipeline-hygiene
-```
-
-If a teammate keeps Claude skills somewhere else, they can set `CLAUDE_SKILLS_DIR`:
-
-```bash
-CLAUDE_SKILLS_DIR="$HOME/.config/claude/skills" scripts/register-claude-skills.sh
-```
-
-The script will not replace an existing non-symlink skill folder unless run with `--force`.
+For local setup, Claude command registration, and verification, see [SETUP.md](SETUP.md).
 
 The old standalone GitHub repos are archived. Treat this repo as the active home.
 
@@ -178,6 +157,7 @@ opp-intel/
 ├── AGENTS.md
 ├── CLAUDE.md
 ├── README.md
+├── SETUP.md
 ├── core/
 ├── deal-read/
 ├── pipeline-read/
