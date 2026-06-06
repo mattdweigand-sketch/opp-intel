@@ -378,6 +378,10 @@ def deal_plan(ctx, profile="pipeline"):
     """Per-deal query plan — identical contract to deal-read's plan.py."""
     fields = load("sf-fields.json")
     model = load("risk-model.json")
+    profiles = load("depth-profiles.json")
+    profile_cfg = profiles.get(profile, profiles.get("pipeline", {}))
+    email_cfg = profile_cfg.get("email", {}) if isinstance(profile_cfg.get("email"), dict) else {}
+    max_threads = email_cfg.get("max_threads", 3)
     window = model["thresholds"]["email_window_days"]
 
     sf = {}
@@ -422,7 +426,7 @@ def deal_plan(ctx, profile="pipeline"):
                 f"FROM Contact WHERE AccountId = '{ctx['account_id']}' AND Email != null"
             )
 
-    gmail = {"sent_freshness": f"in:sent newer_than:{window}d"}
+    gmail = {"sent_freshness": f"in:sent newer_than:{window}d", "max_threads": max_threads}
     emails = ctx.get("contact_emails") or []
     if emails:
         ors = " OR ".join(emails)
@@ -434,24 +438,29 @@ def deal_plan(ctx, profile="pipeline"):
     # newest inbound can be message N of a thread whose snippet shows month-old mail. Never
     # judge email recency from the search snippet, and never discard a returned thread
     # because its visible snippet predates the window — it matched because it holds an
-    # in-window message. This rule is emitted to every per-deal gather.
+    # in-window message. This rule is emitted to every per-deal gather. Pipeline mode
+    # caps expansion to bounded recent threads; deal mode keeps a deeper cap.
     gmail["_freshness_rule"] = (
-        "MANDATORY: for every thread thread_search returns, call get_thread and read its "
-        "FULL message list. Compute this deal's email freshness (newest inbound, newest "
-        "outbound, last_inbound/outbound dates) from the MAX message date across the "
-        "expanded threads — NOT from the search-result snippet, which often shows the "
-        "oldest messages of a long reused-subject thread. A thread returned by a "
-        "newer_than: query contains an in-window message even when its snippet looks old: "
-        "expand it, do not drop it. Setting email_data_stale off a snippet date is the "
-        "exact failure this rule prevents."
+        f"MANDATORY: expand at most max_threads={max_threads} threads from thread_search. "
+        f"If result metadata exposes latest thread dates, use the newest {max_threads}; "
+        f"otherwise use the first {max_threads} returned by the connector. For every thread "
+        f"in that capped set, call get_thread and read its FULL message list. Compute this "
+        f"deal's email freshness (newest inbound, newest outbound, last_inbound/outbound "
+        f"dates) from the MAX message date across the expanded threads — NOT from the "
+        f"search-result snippet, which often shows the oldest messages of a long reused-subject "
+        f"thread. A thread returned by a newer_than: query contains an in-window message even "
+        f"when its snippet looks old: expand it, do not drop it. Do NOT expand threads beyond "
+        f"max_threads={max_threads}; for deeper email history, hand the deal to deal-read. "
+        f"Setting email_data_stale off a snippet date is the exact failure this rule prevents."
     )
     if profile == "pipeline":
         gmail["_note"] = (
             "After running account_contacts and contact_roles, union all non-null Email values "
             "and re-run thread_search: from:(<emails>) OR to:(<emails>) newer_than:{window}d. "
-            "Then get_thread every returned thread and read full bodies — see _freshness_rule: "
-            "derive freshness from the expanded message list, never the snippet."
+            "Then get_thread the capped max_threads={max_threads} thread set and read full bodies "
+            "— see _freshness_rule: derive freshness from the expanded message list, never the snippet."
         ).replace("{window}", str(window))
+        gmail["_note"] = gmail["_note"].replace("{max_threads}", str(max_threads))
 
     # Workflow-tool inbox sweep: internal SaaS notifications (CLM, NDA/legal, call intel,
     # CRM auto-update) live in the rep's own Gmail under the vendors' sender domains, scoped

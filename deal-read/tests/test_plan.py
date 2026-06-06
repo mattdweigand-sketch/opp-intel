@@ -42,6 +42,7 @@ def main():
     ok &= check("prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("gmail thread cap uses deal depth", full["gmail"]["max_threads"] == 10)
     ok &= check("gmail thread_search uses emails", "a@x.com" in full["gmail"]["thread_search"])
     ok &= check("calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("calendar uses attendees", "a@x.com" in full["calendar"]["query"]["attendees"])

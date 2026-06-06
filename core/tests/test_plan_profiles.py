@@ -49,6 +49,8 @@ def main():
 
     pipeline = run_plan({"deal_name": "Acme", "opp_id": "006X", "account_id": "001X"}, surface="pipeline-read")
     ok &= check("pipeline per-deal plan: contact query preserved", "account_contacts" in pipeline["salesforce"])
+    ok &= check("deal plan: email thread cap uses deal depth", deal["gmail"]["max_threads"] == 10)
+    ok &= check("pipeline plan: email thread cap uses pipeline depth", pipeline["gmail"]["max_threads"] == 3)
     ok &= check("deal plan: calendar emitted", deal["calendar"]["source"] == "google_calendar")
     ok &= check("pipeline plan: calendar emitted", pipeline["calendar"]["source"] == "google_calendar")
 
