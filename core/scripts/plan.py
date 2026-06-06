@@ -140,7 +140,7 @@ def forecast_options(ctx, fields, model):
 def internal_mode_for(ctx, model, profile="pipeline"):
     # An explicit --internal flag always wins. Otherwise the chosen default lives in
     # config (internal_evidence.default), so Slack/Drive evidence runs on every mode,
-    # triage included. To turn it off, set that config default to "off" or pass
+    # read included. To turn it off, set that config default to "off" or pass
     # --internal off; do not special-case a mode here.
     if ctx.get("internal") is not None:
         return normalize_token(ctx.get("internal"))
@@ -307,7 +307,7 @@ def pipeline_plan(ctx):
 
     # Connectors that each per-deal subagent will hit, derived from the resolved mode so
     # the large-run confirmation prompt is accurate on every run instead of recited from
-    # prose. Hygiene hits Salesforce only; triage/forecast add Gmail/Calendar/Zoom, plus
+    # prose. Hygiene hits Salesforce only; read/forecast add Gmail/Calendar/Zoom, plus
     # Slack and Google Drive when internal evidence is on (forecast default, or
     # --internal auto|force).
     # See SKILL.md §1.3.

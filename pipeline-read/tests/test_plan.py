@@ -36,7 +36,7 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: triage default runs Calendar and Slack/Drive (config default force)",
+    ok &= check("pipeline: read default runs Calendar and Slack/Drive (config default force)",
                 p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.

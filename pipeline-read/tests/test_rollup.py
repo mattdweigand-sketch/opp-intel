@@ -68,7 +68,7 @@ def main():
     nr["ranking"][0]  # smoke
     ok &= check("clean deal has zero flag_count", nr["ranking"][0]["flag_count"] == 0)
 
-    calendar = run({"mode": "triage", "deals": [
+    calendar = run({"mode": "read", "deals": [
         deal("Calendar Risk", 100000, 12, {"calendar_no_upcoming_late_stage": True}),
         deal("Calendar Amber", 90000, 12, {"calendar_next_meeting_no_buyer_attendees": True}),
         deal("Clean", 80000, 12, {}),
@@ -101,8 +101,8 @@ def main():
         gap_deal("Acme", 80000, 10, {"overdue_close": True}),
         gap_deal("Globex", 50000, 24, {}),
     ]
-    no_gap = run({"mode": "triage", "deals": base_deals})
-    with_gap = run({"mode": "triage", "deals": [
+    no_gap = run({"mode": "read", "deals": base_deals})
+    with_gap = run({"mode": "read", "deals": [
         gap_deal("Northwind", 120000, 16, {"single_threaded": True, "email_data_stale": True},
                  coverage_gaps=["activity_coverage_gap"], anchor="2026-05-26", anchor_src="call"),
         gap_deal("Acme", 80000, 10, {"overdue_close": True}),
@@ -122,19 +122,22 @@ def main():
                 [r["name"] for r in with_gap["ranking"]] == [r["name"] for r in no_gap["ranking"]])
 
     # Backward compat: a bundle with no coverage_gaps/freshness yields empty gaps + null last_touch.
-    legacy = run({"mode": "triage", "deals": [deal("Legacy", 10000, 5, {"single_threaded": True})]})
+    legacy = run({"mode": "read", "deals": [deal("Legacy", 10000, 5, {"single_threaded": True})]})
     ok &= check("legacy: source_gaps empty when no coverage_gaps", legacy.get("source_gaps") == [])
     ok &= check("legacy: coverage_gap_deals empty", legacy["portfolio"]["coverage_gap_deals"] == [])
     ok &= check("legacy: last_touch null when freshness absent",
                 legacy["ranking"][0]["last_touch"] is None
                 and legacy["ranking"][0]["last_touch_source"] is None)
 
-    # Mode contract: an explicit triage bundle stays triage and emits no forecast block,
+    # Mode contract: an explicit read bundle stays read and emits no forecast block,
     # even when amount_basis is present. (amount_basis must not infer forecast.)
-    triage = run({"mode": "triage", "amount_basis": "acv",
-                  "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
-    ok &= check("mode: explicit triage stays triage", triage["run"]["mode"] == "triage")
-    ok &= check("mode: triage emits no forecast block", "forecast" not in triage)
+    read_mode = run({"mode": "read", "amount_basis": "acv",
+                     "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
+    ok &= check("mode: explicit read stays read", read_mode["run"]["mode"] == "read")
+    ok &= check("mode: read emits no forecast block", "forecast" not in read_mode)
+    legacy_mode = run({"mode": "triage", "amount_basis": "acv",
+                       "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
+    ok &= check("mode: legacy triage input normalizes to read", legacy_mode["run"]["mode"] == "read")
     # And mode "forecast" still produces the forecast block.
     fc = run({"mode": "forecast",
               "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})

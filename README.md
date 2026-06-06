@@ -38,12 +38,12 @@ It reads the rep's open opportunities in the selected window, runs the shared de
 Use it when the question is about many deals:
 
 ```text
-/pipeline-triage
+/pipeline-read
 /pipeline-forecast
 /pipeline-hygiene
 ```
 
-`/pipeline-triage` is the work-the-week view. It ranks open deals by evidence-backed risk and gives the next move for each one.
+`/pipeline-read` is the work-the-week view. It ranks open deals by evidence-backed risk and gives the next move for each one.
 
 `/pipeline-forecast` is the forecast-call view. It rolls the same per-deal reads into forecast posture, category rollup, recommendation labels, movement from a prior computed-inputs artifact, internal evidence coverage, and evidence gaps.
 
@@ -90,12 +90,25 @@ The source boundary is intentional:
 - Slack and Drive evidence must stay bounded to mapped rooms and linked docs unless the pipeline mode explicitly asks for bounded fallback lookup.
 - Hygiene remains Salesforce-only.
 
+## Agent governance
+
+This repo treats each slash-command surface as a scoped operator over opportunity evidence, not as an unrestricted assistant.
+
+- Identity: the active agent surfaces are the local Claude commands installed from this checkout.
+- Source access: Salesforce, Gmail, Calendar, Zoom, Slack, and Drive are evidence sources. Access should stay read-only unless a future write path is explicitly designed and permissioned.
+- Current write path: `deal-read` may create a Gmail draft only after explicit user confirmation. It never sends email.
+- No-write surface: `pipeline-read` makes no writes. Read, forecast, and hygiene are read-only outputs.
+- Human approval: externally visible actions require an explicit user confirmation for the exact action. Prior approval does not carry over to a different action.
+- Auditability: deal and pipeline briefs must carry computed-inputs evidence and pass the relevant validator before they are treated as final.
+- Failure handling: missing or unauthorized connectors become source gaps. The agent should not infer risk from unavailable evidence.
+- Model boundary: this repo uses deterministic flags and posture labels. It does not predict win probability or create local predictive weights.
+
 ## Scoring system
 
 The repo does not predict win probability. It sorts observed evidence into deterministic flags.
 
 ```text
-pipeline triage / forecast scoring
+pipeline read / forecast scoring
 ├── red flags rank first
 │   ├── overdue_close        # close date is in the past
 │   ├── close_date_slipped   # close date has been pushed

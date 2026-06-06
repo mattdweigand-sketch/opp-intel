@@ -51,6 +51,24 @@
       "broad_search_allowed": true,
       "slack": {
         "query_type": "bounded_fallback_lookup",
+        "steps": [
+          {
+            "step": 1,
+            "action": "slack_search_channels",
+            "terms": [],
+            "channel_types": "public_channel,private_channel",
+            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
+            "on_no_match": "proceed to step 2"
+          },
+          {
+            "step": 2,
+            "action": "slack_search_public_and_private",
+            "terms": [],
+            "window_days": 30,
+            "on_match": "capture signals with source_refs; set coverage=checked_no_match",
+            "on_no_match": "set coverage=checked_no_match; no signals"
+          }
+        ],
         "terms": [],
         "window_days": 30,
         "max_messages": 80,

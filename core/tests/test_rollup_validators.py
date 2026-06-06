@@ -37,7 +37,7 @@ def check(name, cond):
 def main():
     ok = True
     rollup = run_json(ROLLUP, {
-        "mode": "triage",
+        "mode": "read",
         "deals": [
             {
                 "name": "Acme",
@@ -52,7 +52,7 @@ def main():
         ],
     })
     ok &= check("core rollup: ranking emitted", rollup["ranking"][0]["name"] == "Acme")
-    ok &= check("core rollup: mode preserved", rollup["run"]["mode"] == "triage")
+    ok &= check("core rollup: mode preserved", rollup["run"]["mode"] == "read")
 
     deal_brief = (
         "Confidence: Medium\n\nComputed inputs:\n```json\n"
@@ -65,7 +65,7 @@ def main():
         "Confidence: Medium\nWhere you're blind: None.\nComputed inputs:\n```json\n"
         + json.dumps({
             "schema_version": "pipeline-read.computed-inputs.v1",
-            "run": {"mode": "triage"},
+            "run": {"mode": "read"},
             "portfolio": {"stale_data_deals": 0},
             "ranking": []
         })

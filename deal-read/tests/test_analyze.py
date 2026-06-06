@@ -124,6 +124,18 @@ def main():
     ok &= check("calendar: source gap preserved", "calendar_context_missing" in r["calendar_evidence"]["source_gaps"])
 
     r = run({
+        "compute_input": {
+            "today": "2026-06-06",
+            "emails": [{"direction": "out", "date": "2026-05-01"}],
+        },
+        "connector_status": {"email": "timeout"},
+    })
+    ok &= check("connector status: top-level status reaches compute",
+                "email_connector_degraded" in r["deal_metrics"]["coverage_gaps"])
+    ok &= check("connector status: degraded email neutralizes stale flag",
+                r["deal_metrics"]["flags"]["email_data_stale"] is False)
+
+    r = run({
         "compute_input": {},
         "internal_evidence": {"mode": "auto", "coverage": "deal_room_missing"},
     })

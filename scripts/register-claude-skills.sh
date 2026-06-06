@@ -27,6 +27,15 @@ register_skill() {
 }
 
 register_skill "deal-read" "$repo_root/deal-read"
-register_skill "pipeline-triage" "$repo_root/pipeline-read/commands/pipeline-triage"
+register_skill "pipeline-read" "$repo_root/pipeline-read/commands/pipeline-read"
 register_skill "pipeline-forecast" "$repo_root/pipeline-read/commands/pipeline-forecast"
 register_skill "pipeline-hygiene" "$repo_root/pipeline-read/commands/pipeline-hygiene"
+
+old_triage="$skills_dir/pipeline-triage"
+if [[ -L "$old_triage" ]]; then
+  old_target="$(readlink "$old_triage")"
+  if [[ "$old_target" == "$repo_root/pipeline-read/commands/pipeline-triage" ]]; then
+    rm "$old_triage"
+    printf 'OK   removed old %s -> %s\n' "$old_triage" "$old_target"
+  fi
+fi

@@ -19,20 +19,26 @@ def check(name, cond):
 
 def main():
     ok = True
-    triage = read("pipeline-triage")
+    read_cmd = read("pipeline-read")
     forecast = read("pipeline-forecast")
     hygiene = read("pipeline-hygiene")
+    ok &= check("old pipeline-triage command folder absent",
+                not os.path.exists(os.path.join(COMMANDS, "pipeline-triage")))
 
     for name, text in {
-        "triage": triage,
+        "read": read_cmd,
         "forecast": forecast,
         "hygiene": hygiene,
     }.items():
         ok &= check(f"{name}: no personal absolute repo path", "/Users/matthewweigand/Code/opp-intel" not in text)
 
-    ok &= check("triage: Calendar connector named", "Google Calendar" in triage)
+    ok &= check("read: Calendar connector named", "Google Calendar" in read_cmd)
     ok &= check("forecast: Calendar connector named", "Google Calendar" in forecast)
     ok &= check("hygiene: Calendar explicitly excluded", "no Gmail, Calendar, Zoom, Slack, or Drive" in hygiene)
+    ok &= check("frontends: old /pipeline-triage command absent",
+                "/pipeline-triage" not in read_cmd
+                and "/pipeline-triage" not in forecast
+                and "/pipeline-triage" not in hygiene)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

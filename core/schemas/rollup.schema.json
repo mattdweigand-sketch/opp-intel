@@ -9,7 +9,7 @@
       "type": "object",
       "required": ["mode"],
       "properties": {
-        "mode": { "enum": ["triage", "forecast", "hygiene"] }
+        "mode": { "enum": ["read", "forecast", "hygiene"] }
       },
       "additionalProperties": true
     },

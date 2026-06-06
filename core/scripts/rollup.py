@@ -640,16 +640,17 @@ def main():
         model = load("risk-model.json")
         fields = load("sf-fields.json")
 
-        # Mode is set explicitly by the command that built the bundle
-        # (/pipeline-forecast sets mode "forecast"; /pipeline-triage sets mode "triage";
-        # /pipeline-hygiene sets mode "hygiene"). Do NOT infer forecast from the presence
-        # of amount_basis or posture: amount_basis has a config default and triage
-        # ranks on ACV too, so inferring from it silently flipped triage runs to
-        # forecast. The command names the mode; the rollup obeys it.
-        hygiene_requested = normalize_token(bundle.get("mode")) == "hygiene"
+        # Mode is set explicitly by the command that built the bundle:
+        # /pipeline-read -> read, /pipeline-forecast -> forecast,
+        # /pipeline-hygiene -> hygiene. Accept legacy "triage" input at the
+        # boundary, but new outputs always use "read".
+        mode = normalize_token(bundle.get("mode"))
+        if mode == "triage":
+            mode = "read"
+        hygiene_requested = mode == "hygiene"
         forecast_requested = bool(
             bundle.get("forecast")
-            or bundle.get("mode") == "forecast"
+            or mode == "forecast"
         ) and not hygiene_requested
         forecast_cfg = model.get("forecast", {})
         amount_cfg = fields.get("amount_basis", {})
@@ -712,7 +713,7 @@ def main():
                 "run": {
                     "rep_name": bundle.get("rep_name"),
                     "run_date": (bundle.get("window") or {}).get("today") or bundle.get("run_date"),
-                    "mode": "forecast" if forecast_requested else "triage",
+                    "mode": "forecast" if forecast_requested else "read",
                     "posture": posture if forecast_requested else None,
                     "amount_basis": amount_basis,
                     "internal_evidence": internal_mode,

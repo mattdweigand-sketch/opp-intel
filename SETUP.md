@@ -30,7 +30,7 @@ Slash commands are registered as symlinks under `~/.claude/skills`:
 
 ```text
 ~/.claude/skills/deal-read -> <repo>/deal-read
-~/.claude/skills/pipeline-triage -> <repo>/pipeline-read/commands/pipeline-triage
+~/.claude/skills/pipeline-read -> <repo>/pipeline-read/commands/pipeline-read
 ~/.claude/skills/pipeline-forecast -> <repo>/pipeline-read/commands/pipeline-forecast
 ~/.claude/skills/pipeline-hygiene -> <repo>/pipeline-read/commands/pipeline-hygiene
 ```

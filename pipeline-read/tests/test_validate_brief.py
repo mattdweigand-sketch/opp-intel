@@ -26,7 +26,7 @@ def footer(stale=False):
     flags = ["email_data_stale"] if stale else ["single_threaded"]
     obj = {
         "schema_version": "pipeline-read.computed-inputs.v1",
-        "run": {"mode": "triage"},
+        "run": {"mode": "read"},
         "portfolio": {"deal_count": 1, "stale_data_deals": 1 if stale else 0},
         "ranking": [{"name": "Acme", "severity_tier": "red", "risk_flags": flags}],
     }
@@ -54,11 +54,11 @@ def main():
     ok &= check("High + stale deal fails", rc == 1 and "stale" in out.lower())
 
     rc, out = run("Confidence: Medium, partial coverage.\n\nComputed inputs:\n" + footer(stale=True))
-    ok &= check("triage stale without blind section fails",
+    ok &= check("read stale without blind section fails",
                 rc == 1 and "Where you're blind" in out)
 
     rc, _ = run("Confidence: Medium, partial coverage.\n\nWhere you're blind: Acme email data is stale.\n\nComputed inputs:\n" + footer(stale=True))
-    ok &= check("triage stale with blind section passes", rc == 0)
+    ok &= check("read stale with blind section passes", rc == 0)
 
     rc, _ = run("Confidence: High, all current.\n\nComputed inputs:\n" + footer(stale=False))
     ok &= check("High + fresh passes", rc == 0)
@@ -78,7 +78,7 @@ def main():
     def gap_footer():
         obj = {
             "schema_version": "pipeline-read.computed-inputs.v1",
-            "run": {"mode": "triage"},
+            "run": {"mode": "read"},
             "portfolio": {"deal_count": 1, "stale_data_deals": 0, "coverage_gap_deals": ["Acme"]},
             "source_gaps": ["activity_coverage_gap"],
             "ranking": [{"name": "Acme", "severity_tier": "amber", "risk_flags": ["single_threaded"],
@@ -102,7 +102,7 @@ def main():
     def stale_anchor_footer(last_touch="2026-05-26"):
         obj = {
             "schema_version": "pipeline-read.computed-inputs.v1",
-            "run": {"mode": "triage"},
+            "run": {"mode": "read"},
             "portfolio": {"deal_count": 1, "stale_data_deals": 1},
             "ranking": [{"name": "Northwind", "severity_tier": "red",
                          "risk_flags": ["email_data_stale"], "last_touch": last_touch,

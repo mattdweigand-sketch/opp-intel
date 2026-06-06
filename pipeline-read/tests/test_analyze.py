@@ -58,6 +58,16 @@ def main():
     })
     ok &= check("calendar evidence preserved", r["calendar_evidence"]["upcoming_meetings"][0]["title"] == "Renewal review")
 
+    r = run({
+        "compute_input": {
+            "today": "2026-06-06",
+            "emails": [{"direction": "out", "date": "2026-05-01"}],
+        },
+        "connector_status": {"email": "timeout"},
+    })
+    ok &= check("connector status reaches compute",
+                "email_connector_degraded" in r["deal_metrics"]["coverage_gaps"])
+
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})
     ok &= check("empty: no crash", "deal_metrics" in r)

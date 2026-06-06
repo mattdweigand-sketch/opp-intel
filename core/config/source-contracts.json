@@ -9,27 +9,52 @@
     "no_slack_post": true,
     "no_drive_edit": true
   },
+  "execution_status": {
+    "purpose": "Per-source execution status the gather step reports back per deal, so a connector that did not run cleanly cannot be read as a clean negative finding.",
+    "allowed_values": ["ok", "empty", "timeout", "error", "partial"],
+    "value_semantics": {
+      "ok": "Connector ran and returned data; negatives are trustworthy.",
+      "empty": "Connector ran cleanly and genuinely found nothing; this IS a valid negative finding (the prospect really did go quiet on this source).",
+      "timeout": "Connector did not complete in time; degraded.",
+      "error": "Connector failed; degraded.",
+      "partial": "Connector returned an incomplete result set; degraded."
+    },
+    "degraded_values": ["timeout", "error", "partial"],
+    "clean_negative_rule": "A clean negative finding (no reply, went quiet, single-threaded from observed participants) may only be asserted from a connector whose status is ok or empty. A degraded connector (timeout/error/partial) yields a coverage gap, never a finding.",
+    "coverage_gap_emission": "compute.py appends `<source>_connector_degraded` to coverage_gaps for each degraded connector. Coverage gaps are NOT risk flags and never feed ranking or severity.",
+    "email_degraded_neutralization": "When email is degraded, compute.py nulls days_since_last_inbound and unanswered_rep_emails, forces email_data_stale to False, and suppresses single_threaded unless it is independently supported by the Salesforce-sourced logged_contact_roles.",
+    "retry_expectation": "The gather step must retry a timeout/error connector up to 2 times before reporting it degraded. Report the final status (ok/empty/timeout/error/partial) in the bundle.",
+    "absent_status": "An absent or unrecognized status is treated as NOT degraded (no coverage gap, no neutralization), preserving backward compatibility with snapshots that omit connector_status."
+  },
   "sources": {
     "salesforce": {
       "plan": "emit_soql_or_related_record_plan",
       "normalize": "salesforce_evidence",
-      "profiles": ["deal", "pipeline", "hygiene"]
+      "profiles": ["deal", "pipeline", "hygiene"],
+      "status_key": "salesforce",
+      "status": "Reports execution_status under connector_status.salesforce; degraded yields salesforce_connector_degraded coverage gap."
     },
     "gmail": {
       "plan": "emit_thread_and_sent_freshness_plan",
       "normalize": "email_evidence",
-      "profiles": ["deal", "pipeline"]
+      "profiles": ["deal", "pipeline"],
+      "status_key": "email",
+      "status": "Reports execution_status under connector_status.email; degraded yields email_connector_degraded and neutralizes email-derived negative assertions (see execution_status.email_degraded_neutralization)."
     },
     "calendar": {
       "plan": "emit_historical_and_future_meeting_lookup",
       "normalize": "calendar_evidence",
-      "profiles": ["deal", "pipeline"]
+      "profiles": ["deal", "pipeline"],
+      "status_key": "calendar",
+      "status": "Reports execution_status under connector_status.calendar; degraded yields calendar_connector_degraded coverage gap."
     },
     "calls": {
       "current_provider": "zoom",
       "future_providers": ["gong"],
       "normalize": "call_evidence",
-      "profiles": ["deal", "pipeline"]
+      "profiles": ["deal", "pipeline"],
+      "status_key": "zoom",
+      "status": "Reports execution_status under connector_status.zoom; degraded yields zoom_connector_degraded coverage gap."
     },
     "slack": {
       "plan": "mapped_room_or_force_bounded_lookup",

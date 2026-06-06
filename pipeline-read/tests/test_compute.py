@@ -253,6 +253,86 @@ def main():
     ok &= check("witness fresh: activity_coverage_gap absent from flags",
                 "activity_coverage_gap" not in r["flags"])
 
+    # Fixture 9: degraded email connector (the Pearl Energy miss). A timed-out email
+    # connector retrieved nothing; absence must NOT be read as silence. The connector
+    # reports degraded → coverage gap, and every email-derived NEGATIVE assertion is
+    # neutralized (null inbound/unanswered counts, no staleness claim).
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "latest_call_date": "2026-05-20",
+        "emails": [],
+        "connector_status": {"email": "timeout"},
+    })
+    ok &= check("degraded: email_connector_degraded in coverage_gaps",
+                "email_connector_degraded" in r["coverage_gaps"])
+    ok &= check("degraded: coverage gap is not a risk flag",
+                "email_connector_degraded" not in r["flags"])
+    ok &= check("degraded: days_since_last_inbound null",
+                r["email"]["days_since_last_inbound"] is None)
+    ok &= check("degraded: unanswered_rep_emails null",
+                r["email"]["unanswered_rep_emails"] is None)
+    ok &= check("degraded: email_data_stale False",
+                r["flags"]["email_data_stale"] is False)
+
+    # Fixture 10: Pearl-like single-thread basis. Email is degraded and the only
+    # contact basis is email-observed participants (one person) → single_threaded
+    # must NOT fire; the coverage gap carries the uncertainty instead.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "observed_participants": ["solo@prospect.com"],
+        "connector_status": {"email": "timeout"},
+    })
+    ok &= check("degraded single-thread: not fired on email-only basis",
+                r["flags"]["single_threaded"] is False)
+    ok &= check("degraded single-thread: email_connector_degraded surfaced instead",
+                "email_connector_degraded" in r["coverage_gaps"])
+
+    # Same input but with an SF-independent basis: logged_contact_roles=1 is a real,
+    # connector-clean signal of a thin thread, so single_threaded still fires.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "observed_participants": ["solo@prospect.com"],
+        "logged_contact_roles": 1,
+        "connector_status": {"email": "timeout"},
+    })
+    ok &= check("degraded single-thread: still fires with SF logged_contact_roles=1",
+                r["flags"]["single_threaded"] is True)
+
+    # Non-email degraded connectors still surface their own coverage gap, and treat
+    # absent/ok/empty statuses as NOT degraded (no gap, no neutralization).
+    r = run({
+        "today": "2026-06-06",
+        "connector_status": {"zoom": "error", "calendar": "ok", "salesforce": "empty"},
+    })
+    ok &= check("degraded: zoom_connector_degraded surfaced",
+                "zoom_connector_degraded" in r["coverage_gaps"])
+    ok &= check("degraded: ok/empty statuses are not degraded",
+                "calendar_connector_degraded" not in r["coverage_gaps"]
+                and "salesforce_connector_degraded" not in r["coverage_gaps"])
+
+    # Regression / INVARIANT: identical input with NO connector_status must behave
+    # exactly as before — single_threaded still fires off email-observed basis, the
+    # email counts are populated, and no *_connector_degraded gap is emitted.
+    base_input = {
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-04"},
+        "observed_participants": ["solo@prospect.com"],
+        "emails": [
+            {"direction": "out", "date": "2026-05-01"},
+        ],
+    }
+    r = run(base_input)
+    ok &= check("no connector_status: single_threaded fires off email basis",
+                r["flags"]["single_threaded"] is True)
+    ok &= check("no connector_status: days_since_last_inbound preserved (null, no inbound)",
+                r["email"]["days_since_last_inbound"] is None
+                and r["email"]["unanswered_rep_emails"] == 1)
+    ok &= check("no connector_status: no *_connector_degraded gap",
+                not any(g.endswith("_connector_degraded") for g in r["coverage_gaps"]))
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

@@ -1,10 +1,10 @@
 # Pipeline Read
 
-Pipeline Read triages forecast risk across a rep's whole pipeline. It is the pipeline-level sibling of
+Pipeline Read ranks forecast risk across a rep's whole pipeline. It is the pipeline-level sibling of
 [Deal Read](../deal-read): it pulls the rep's own Gmail threads, Google Calendar meetings, Zoom recordings, Salesforce data,
 mapped Slack deal rooms, and linked Google Drive proposal docs for every open opportunity closing in
 JSQ's current fiscal quarter by default. It runs each deal through the same deal-risk model, then rolls
-the results into one ranked triage: which deals are most at risk, the dominant risk on each with cited
+the results into one ranked read: which deals are most at risk, the dominant risk on each with cited
 evidence, and the next move. It is read-only across every source and makes no writes, not even a draft.
 
 ---
@@ -13,7 +13,7 @@ evidence, and the next move. It is read-only across every source and makes no wr
 
 Pipeline Read has three views, all over the same engine. The mode is set by the command, never inferred:
 
-- `/pipeline-triage`: the work-the-week view. It ranks the rep's open current-quarter deals by
+- `/pipeline-read`: the work-the-week view. It ranks the rep's open current-quarter deals by
   evidence-backed risk and gives the next move for each one.
 - `/pipeline-forecast`: the forecast-call view. It uses the same deal reads, then rolls them into
   forecast posture, category rollup, keep/downgrade/inspect labels, movement from a prior Computed
@@ -23,10 +23,10 @@ Pipeline Read has three views, all over the same engine. The mode is set by the 
   (no contacts, single-threaded, no champion, missing amount, missing next step, stale activity,
   overdue close). It is deliberately cheap and **Salesforce-only**: no Gmail, Calendar, Zoom, Slack, or Drive, and
   no per-deal fan-out, so it stays fast even on a large pipeline. It names gaps and **proposes no fixes**
-  — that is the clean line versus triage. (This replaces the standalone `pipeline-health` skill.)
+  — that is the clean line versus read. (This replaces the standalone `pipeline-health` skill.)
 
-Triage and forecast both score deal risk off the same live per-deal evidence; hygiene checks record
-completeness off a cheap Salesforce-only scan. Reach for hygiene first to clean the data, triage to
+Read and forecast both score deal risk off the same live per-deal evidence; hygiene checks record
+completeness off a cheap Salesforce-only scan. Reach for hygiene first to clean the data, read to
 decide where the week goes, and forecast when you need to commit a number.
 
 Other options:
@@ -39,7 +39,7 @@ Forecast options:
 | Command | Use |
 |---|---|
 | `/pipeline-forecast --posture conservative` | Treat commit conservatively and surface downgrade risk first. |
-| `/pipeline-triage --next-quarter` | Run the riskiest-first triage on next fiscal quarter instead of the current quarter. |
+| `/pipeline-read --next-quarter` | Run the riskiest-first read on next fiscal quarter instead of the current quarter. |
 | `/pipeline-forecast --window next_quarter` | Run the forecast view for next fiscal quarter. |
 | `/pipeline-forecast --posture defend-commit` | Focus on whether committed deals have enough evidence to defend. |
 | `/pipeline-forecast --posture identify-upside` | Look for credible upside while still naming weak evidence. |
@@ -51,13 +51,13 @@ Forecast options:
 
 Pipeline Read stays *shallow per deal* so a full run stays practical. It works mostly from meeting
 summaries plus Salesforce and email-freshness signals, so it can score every deal without reading
-dozens of full transcripts. For single-deal depth, use the Deal Read repo.
+dozens of full transcripts. For single-deal depth, use `../deal-read`.
 
 ---
 
 ## What you get
 
-A triage or forecast brief, short enough to read before a forecast call:
+A read or forecast brief, short enough to read before a forecast call:
 
 - Confidence rating up front, tied to how much of the pipeline you got a current read on.
 - Forecast at a glance: total ACV in the window, ACV at risk, and the headline counts
@@ -92,7 +92,7 @@ Forecast recommendation labels also come from `../core/scripts/rollup.py`: `keep
 scores.
 
 Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
-affect meeting-cadence flags in triage and forecast. Slack deal rooms and linked proposal docs can
+affect meeting-cadence flags in read and forecast. Slack deal rooms and linked proposal docs can
 affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
 deterministic ranking or Salesforce-owned fields. Broad Slack or Drive lookup is allowed only when the
 internal mode is `force` (the default); `auto` restricts to mapped deal rooms only.
@@ -104,9 +104,9 @@ internal mode is `force` (the default); `auto` restricts to mapped deal rooms on
 1. Point an agent at the repo. Claude Code reads `CLAUDE.md` automatically; any other agent starts at
    `AGENTS.md`, then `CONTEXT.md`.
 2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Gmail,
-   Calendar, and Zoom are always part of triage and forecast. Slack and Google Drive are the internal
+   Calendar, and Zoom are always part of read and forecast. Slack and Google Drive are the internal
    evidence lane; use `--internal off` only to skip those internal sources.
-3. Ask: `/pipeline-triage` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
+3. Ask: `/pipeline-read` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
 Pipeline Read is one surface in this shared repo. Shared deterministic mechanics live in `../core/`;
@@ -152,7 +152,7 @@ Shape:
   "run": {
     "rep_name": "...",
     "run_date": "...",
-    "mode": "triage|forecast",
+    "mode": "read|forecast",
     "posture": "conservative|defend_commit|identify_upside",
     "amount_basis": "acv|crm_primary_amount",
     "internal_evidence": "auto|off|force"
@@ -182,12 +182,12 @@ reuses its deterministic core verbatim, but runs as a standalone pipeline-level 
 pipeline-read/
 ├── AGENTS.md          # Canonical operating map (any agent reads this first)
 ├── CLAUDE.md          # Thin wrapper that imports AGENTS.md + SKILL.md
-├── CONTEXT.md         # Task router: triage, forecast, or hygiene mode
+├── CONTEXT.md         # Task router: read, forecast, or hygiene mode
 ├── SKILL.md           # Pipeline surface: full pipeline + all three output views
 ├── README.md
 ├── .gitignore
 ├── commands/          # Thin command frontends (symlinked into ~/.claude/skills)
-│   ├── pipeline-triage/SKILL.md    #   runs the engine in triage mode → §5
+│   ├── pipeline-read/SKILL.md    #   runs the engine in read mode → §5
 │   ├── pipeline-forecast/SKILL.md  #   runs the engine in forecast mode → §5-forecast
 │   └── pipeline-hygiene/SKILL.md   #   runs the engine in hygiene mode (SF-only) → §5-hygiene
 ├── scripts/           # Compatibility wrappers into ../core/scripts and ../core/validators

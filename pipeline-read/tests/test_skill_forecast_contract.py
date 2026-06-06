@@ -47,10 +47,9 @@ def main():
                 "forecast-realism view" not in text)
     ok &= check("SKILL routes broad internal lookup through force",
                 "Broad Slack or Drive lookup is allowed only under `internal=force`" in text)
-    ok &= check("SKILL does not advertise removed /pipeline-read command",
-                'Trigger on "/pipeline-read"' not in text
-                and "/pipeline-read --forecast" not in text
-                and "/pipeline-read --next-quarter" not in text)
+    ok &= check("SKILL does not advertise removed /pipeline-triage command",
+                "/pipeline-triage" not in text
+                and "pipeline-triage" not in text)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

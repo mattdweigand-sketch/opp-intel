@@ -1,6 +1,6 @@
 ---
 name: pipeline-read
-description: Shared engine for /pipeline-triage, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - triage (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
+description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - read (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
 ---
 
 # Pipeline Read
@@ -8,7 +8,7 @@ description: Shared engine for /pipeline-triage, /pipeline-forecast, and /pipeli
 Coach one rep across their whole forecast. Pull that rep's own Salesforce, Gmail, Google Calendar, and Zoom data for
 every open opportunity closing inside the current fiscal quarter by default, add mapped Slack deal-room and linked
 proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the same deal-risk model
-`deal-read` uses, and roll the results up into one ranked triage. Read-only across all sources. Makes
+`deal-read` uses, and roll the results up into one ranked read. Read-only across all sources. Makes
 no writes at all, not even a draft.
 
 ## Input
@@ -16,7 +16,7 @@ no writes at all, not even a draft.
 This file is the shared **engine**: scope resolution, the per-deal gather loop, the roll-up, and all
 three output views. The mode is chosen by the **command**, not inferred:
 
-- **`/pipeline-triage`** → run in triage mode, present the ranked forecast-risk brief (§5).
+- **`/pipeline-read`** → run in read mode, present the ranked forecast-risk brief (§5).
 - **`/pipeline-forecast`** → run in forecast mode, present the forecast-read view (§5-forecast).
 - **`/pipeline-hygiene`** → run in hygiene mode, present the CRM data-quality view (§5-hygiene).
 
@@ -28,13 +28,13 @@ Feb-Apr, May-Jul, Aug-Oct, and Nov-Jan. To run the next fiscal quarter, pass `--
 `--window next_quarter`, or say next quarter. Other ad hoc windows like `--window 30d` remain available,
 but do not use them unless the user asks.
 
-**Hygiene asks a different question.** Triage and forecast both score deal *risk* off live evidence
+**Hygiene asks a different question.** Read and forecast both score deal *risk* off live evidence
 (email, calls, internal rooms). Hygiene asks "is the Salesforce *record* clean?" — contacts logged, a
 champion role set, `NextStep` and amount filled, activity recent. A deal can be commercially healthy
 with filthy CRM data, or have clean data on a dying deal, so hygiene has its own flags, its own ranking,
 and a deliberately **cheaper, Salesforce-only gather** (no Gmail, Calendar, Zoom, Slack, or Drive; see §2-3-hygiene).
 Like the old `pipeline-health`, it proposes **no fixes or next moves** — that is the clean line versus
-triage.
+read.
 
 Forecast mode (`/pipeline-forecast`) also accepts:
 - `--next-quarter`
@@ -46,14 +46,14 @@ Forecast mode (`/pipeline-forecast`) also accepts:
 - `--internal-window 30d`
 
 **Three views, one pipeline:**
-- Triage (steps 1–4 then §5): the ranked forecast-risk brief.
+- Read (steps 1–4 then §5): the ranked forecast-risk brief.
 - Forecast (steps 1–4 then §5-forecast): same gather + roll-up, a forecast-read view. Lead with
   forecast posture, category rollup, recommendation labels, movement if a prior computed-inputs JSON is
   supplied, internal evidence coverage, and named evidence gaps.
 - Hygiene (step 1, then §2-3-hygiene, then §4 and §5-hygiene): the cheap Salesforce-only CRM
   data-quality scan. It does **not** run the per-deal Gmail/Calendar/Zoom/Slack loop in §2-3.
 
-The roll-up bundle's `mode` field is set explicitly by the command (`triage`, `forecast`, or
+The roll-up bundle's `mode` field is set explicitly by the command (`read`, `forecast`, or
 `hygiene`). `rollup.py` obeys that field; it does **not** infer the view from the presence of
 `amount_basis` or `posture`.
 
@@ -72,7 +72,7 @@ that lives in `deal-read`.
 
 **Hygiene mode is Salesforce-only.** It reads the portfolio list plus one batched
 `OpportunityContactRole` query; it does not touch Gmail, Calendar, Zoom, Slack, or Drive. The other connectors
-above apply to triage and forecast only.
+above apply to read and forecast only.
 
 If a connector is not authorized, say so and proceed with the sources you have. Note in the brief
 which evidence is missing and how that limits confidence across the affected deals.
@@ -128,7 +128,7 @@ pipeline aggregation, once over all deals).
    exact posture, amount basis, forecast category field, and internal-evidence mode. Run the SOQL as
    written via `soqlQuery`.
 3. **Large-run guardrail.** Count the returned opps. If the count exceeds `large_run_threshold`, list
-   them (name, stage, ACV, close date) and confirm with the rep before gathering — in triage and
+   them (name, stage, ACV, close date) and confirm with the rep before gathering — in read and
    forecast each in-scope deal fans out its own subagent hitting the connectors in `plan.py`'s
    `per_deal_connectors` (Salesforce, Gmail, Google Calendar, and Zoom always; Slack and Google Drive whenever internal
    evidence is on, which is the default in those modes unless `--internal off` is passed). State that
@@ -169,7 +169,7 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    threading) is computable from SF fields and Zoom attendee lists without reading bodies. For email,
    read full thread bodies via `get_thread` — this catches active conversations that don't appear in SF
    task logs. For Zoom, use `meeting_summary` and the attendee list only (never `get_meeting_assets` /
-   transcript bodies). Do **not** read Zoom transcripts to produce the triage; that belongs in
+   transcript bodies). Do **not** read Zoom transcripts to produce the read; that belongs in
    `/deal-read`.
 3. Build the per-deal bundle and run
    `python3 <skill-dir>/scripts/analyze.py < bundle.json` once per deal. For `compute_input`, pass
@@ -196,6 +196,27 @@ feeds them to `rollup.py` once (§4); it never holds raw bodies. This keeps a fu
 small summaries instead of N piles of raw data, and it is the same shape whether one agent loops the
 deals inline or a harness fans them out — the deterministic core (`analyze.py` per deal, `rollup.py`
 once) is identical either way.
+
+**Connector-status contract (a failed connector is a coverage gap, never a finding).** Each per-deal
+gather must distinguish "this source ran and found nothing" from "this source did not run." Three
+requirements bind every per-deal subagent:
+1. **Retry transient failures.** When a connector (Salesforce, Gmail, Calendar, Zoom) times out or
+   errors, retry it up to **2 times** before giving up. Only mark it degraded after the retries fail.
+2. **Report `connector_status` in the returned bundle.** Add a `connector_status` object to the
+   per-deal `compute_input` with one entry per source — `email`, `zoom`, `calendar`, `salesforce` —
+   set to `"ok"` (ran, returned data), `"empty"` (ran cleanly, genuinely found nothing), or
+   `"timeout"`/`"error"`/`"partial"` (degraded after retries). Absent or unrecognized is treated as not
+   degraded. `compute.py` reads this and appends `<source>_connector_degraded` to `coverage_gaps`, which
+   carries confidence/blindness downstream and never enters ranking.
+3. **Do not assert absence-based claims from a degraded connector.** A single-thread call, a "no reply"
+   or "went quiet" read, or any negative finding may only stand when the source it relies on ran
+   cleanly (`ok` or `empty`). If the connector that would witness the finding was degraded, it becomes a
+   coverage gap, not a finding. `compute.py` already enforces this for email — when email is degraded it
+   nulls the inbound and unanswered counts, refuses to assert email staleness, and drops
+   `single_threaded` unless the Salesforce-sourced `logged_contact_roles` independently supports it — so
+   report the status honestly and let the engine neutralize. In the brief, name the degraded source
+   under "Where you're blind" and lower confidence; never present its silence as the prospect going
+   quiet.
 
 > **Claude Code execution (the Claude-Code-specific way to satisfy the contract above).** Run each in-
 > scope deal as its own subagent via the `Agent` tool, **on every run** — launch them concurrently (one
@@ -242,7 +263,7 @@ Assemble the roll-up bundle and run it once:
 ```json
 {
   "rep_name": "<rep>",
-  "mode": "triage|forecast|hygiene",
+  "mode": "read|forecast|hygiene",
   "posture": "conservative|defend_commit|identify_upside",
   "amount_basis": "acv|crm_primary_amount",
   "internal": "auto|off|force",
@@ -290,9 +311,9 @@ or SF field).
 Where observed participants exceeded logged contact roles for a deal, you may add a one-line CRM-hygiene
 note, separate from the threading risk.
 
-### 5. Output the triage brief
+### 5. Output the read brief
 
-Conversational, direct, second person ("you"), coaching tone — a forecast triage a rep reads in two
+Conversational, direct, second person ("you"), coaching tone — a forecast read a rep reads in two
 minutes, not a report dump. Reference the writing-style skill for voice. Structure:
 
 ```
@@ -442,8 +463,8 @@ Rules:
 - Use `portfolio.distribution` verbatim for the distribution counts and `ranking` verbatim for the
   order. One dominant flag per deal; do not list a deal's secondary flags as if they were separate rows.
 - State the bare fact behind each flag (the count, the blank field, the days-since-activity). **Do not
-  add a recommendation, next step, or coaching line** — that is what makes this hygiene and not triage.
-  If the rep wants the fix, that is `/pipeline-triage` or `/deal-read`.
+  add a recommendation, next step, or coaching line** — that is what makes this hygiene and not read.
+  If the rep wants the fix, that is `/pipeline-read` or `/deal-read`.
 - Calibrate confidence to read coverage: High when the contact-roles query returned for every opp;
   lower it and name the opps whose roles you could not read.
 - Same computed footer and validate gate as §5. Pipe the finished brief into
@@ -452,9 +473,9 @@ Rules:
 
 ### 6. Hand off for a deep read (no drafting here)
 
-`pipeline-read` does not draft email — that is a per-deal action. When the triage shows a deal that
+`pipeline-read` does not draft email — that is a per-deal action. When the read shows a deal that
 needs the full call/email coaching read or a follow-up draft, point the rep to the sibling:
-`/deal-read <deal>`. Keep the responsibilities clean: pipeline-read ranks and triages; deal-read goes
+`/deal-read <deal>`. Keep the responsibilities clean: pipeline-read ranks the pipeline; deal-read goes
 deep on one and can draft the follow-up.
 
 ## Save (optional)
@@ -477,7 +498,7 @@ reps; it does not write to Open Brain or deal-management.
 - Per-rep only: operate on the running user's own connected accounts. Do not access another rep's
   mailbox or recordings.
 - Confirm before a large run (see §1.3). A full read loops the connectors per deal.
-- Triage and forecast propose actions; hygiene proposes none (it names data gaps only). Either way
+- Read and forecast propose actions; hygiene proposes none (it names data gaps only). Either way
   `pipeline-read` takes no outbound action and makes no writes of any kind.
 - No Sales plugin dependency. Downstream workflows may cite the Computed inputs JSON but should not
   re-score or rewrite its deterministic labels.

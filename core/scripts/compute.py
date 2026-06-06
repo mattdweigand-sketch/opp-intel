@@ -49,9 +49,24 @@ def days_between(later, earlier):
     return (later - earlier).days
 
 
+DEGRADED_STATUSES = {"timeout", "error", "partial"}
+
+
 def main():
     snap = json.load(sys.stdin)
     is_hygiene = bool(snap.get("hygiene"))
+
+    # Per-connector execution status (optional). A connector that did not run
+    # cleanly cannot assert a negative finding: its silence is a coverage gap,
+    # not evidence the prospect went quiet. Absent/unknown/"ok"/"empty" are NOT
+    # degraded; only "timeout"/"error"/"partial" are. See source-contracts.json.
+    connector_status = snap.get("connector_status") or {}
+    degraded_connectors = [
+        name
+        for name in ("email", "zoom", "calendar", "salesforce")
+        if str(connector_status.get(name) or "").strip().lower() in DEGRADED_STATUSES
+    ]
+    email_degraded = "email" in degraded_connectors
 
     model_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "core", "config", "risk-model.json"))
     with open(model_path) as f:
@@ -165,6 +180,12 @@ def main():
     if activity_coverage_gap:
         coverage_gaps.append("activity_coverage_gap")
 
+    # A degraded connector (timeout/error/partial) produces a coverage gap, never a
+    # finding. Coverage gaps are NOT risk flags: they drive confidence/blindness
+    # downstream, never ranking or severity.
+    for name in degraded_connectors:
+        coverage_gaps.append(f"{name}_connector_degraded")
+
     # Which date won activity_anchor — labels the freshness anchor for downstream rollup.
     if activity_anchor is None:
         activity_anchor_source = None
@@ -186,6 +207,15 @@ def main():
         days_since_last_outbound is not None
         and days_since_last_outbound <= thresholds.get("recent_outbound_days", 3)
     )
+
+    # Email-derived NEGATIVE assertions are only trustworthy when the email
+    # connector actually ran. When email is degraded, absence is not evidence of
+    # silence: null the inbound/unanswered counts and refuse to assert staleness.
+    # The coverage gap (email_connector_degraded) carries the uncertainty instead.
+    if email_degraded:
+        days_since_last_inbound = None
+        unanswered_rep_emails = None
+        email_data_stale = False
 
     # MEDDPICC grounding from structured fields, so the economic_buyer, champion, and
     # paper_timeline dimensions don't rely on title-guessing or eyeballing a picklist.
@@ -268,11 +298,25 @@ def main():
         and not has_buyer_attendee(next_meeting)
     )
 
+    # single_threaded normally fires off contacts_engaged. But when the email
+    # connector is degraded, email-observed participants may be undercounted, so a
+    # low contacts_engaged could be a coverage artifact rather than a real thin
+    # thread. In that case only let the flag stand if it is independently supported
+    # by the SF-sourced logged_contact_roles; otherwise rely on the coverage gap.
+    single_thread_max = thresholds["single_thread_max_contacts"]
+    single_threaded = (
+        contacts_engaged is not None and contacts_engaged <= single_thread_max
+    )
+    if email_degraded and single_threaded:
+        logged_roles = snap.get("logged_contact_roles")
+        single_threaded = (
+            logged_roles is not None and logged_roles <= single_thread_max
+        )
+
     flags = {
         "stale_activity": days_since_last_activity is not None
         and days_since_last_activity > thresholds["stale_activity_days"],
-        "single_threaded": contacts_engaged is not None
-        and contacts_engaged <= thresholds["single_thread_max_contacts"],
+        "single_threaded": single_threaded,
         "overdue_close": days_to_close is not None and days_to_close < 0,
         "close_date_slipped": close_date_slippage is not None
         and close_date_slippage["times_pushed"] > 0,

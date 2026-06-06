@@ -176,6 +176,8 @@ def main():
     compute_input = dict(bundle.get("compute_input") or {})
     if calendar_evidence and "calendar_evidence" not in compute_input:
         compute_input["calendar_evidence"] = calendar_evidence
+    if bundle.get("connector_status") and "connector_status" not in compute_input:
+        compute_input["connector_status"] = bundle.get("connector_status")
     deal_metrics = run_script("compute.py", stdin_obj=compute_input)
 
     call_execution = None

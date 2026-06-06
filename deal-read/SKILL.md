@@ -1,6 +1,6 @@
 ---
 name: deal-read
-description: Deal-risk coaching for a single sales opportunity. Synthesizes the running rep's own Salesforce opportunity data, Zoom call recordings/summaries, Gmail threads, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a coaching brief that names where the deal is at risk and the specific next actions to de-risk it. Trigger on "/deal-read <deal>", "give me a read on <deal>", "where is <deal> at risk", "what should I do next on <deal>", or any request for a risk read or next-step coaching on a named deal. Per-rep self-serve: reads only the running user's connected accounts. Do NOT use for team rollups across reps, per-call scoring of an arbitrary recording with no deal, or a whole-pipeline view across deals (that's /pipeline-hygiene for CRM health, /pipeline-triage for risk, /pipeline-forecast for the number).
+description: Deal-risk coaching for a single sales opportunity. Synthesizes the running rep's own Salesforce opportunity data, Zoom call recordings/summaries, Gmail threads, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a coaching brief that names where the deal is at risk and the specific next actions to de-risk it. Trigger on "/deal-read <deal>", "give me a read on <deal>", "where is <deal> at risk", "what should I do next on <deal>", or any request for a risk read or next-step coaching on a named deal. Per-rep self-serve: reads only the running user's connected accounts. Do NOT use for team rollups across reps, per-call scoring of an arbitrary recording with no deal, or a whole-pipeline view across deals (that's /pipeline-hygiene for CRM health, /pipeline-read for risk, /pipeline-forecast for the number).
 ---
 
 # Deal Read
@@ -337,7 +337,7 @@ it is self-contained and portable across reps.
 
 ## Scope guardrails
 
-- One deal per run. For "coach my whole pipeline," redirect to `/pipeline-triage` (risk), `/pipeline-forecast` (the number), or `/pipeline-hygiene` (CRM health).
+- One deal per run. For "coach my whole pipeline," redirect to `/pipeline-read` (risk), `/pipeline-forecast` (the number), or `/pipeline-hygiene` (CRM health).
 - Per-rep only: operate on the running user's own connected accounts. Do not attempt to access another
   rep's mailbox or recordings.
 - Coaching, not auto-pilot: propose actions. The only write allowed is creating a Gmail **draft** on
