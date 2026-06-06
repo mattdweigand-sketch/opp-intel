@@ -13,15 +13,20 @@ cd opp-intel
 
 The setup scripts resolve paths from the current checkout. They do not require a specific user directory.
 
-## 2. Register Claude commands
+## 2. Run local setup
 
-Register the local Claude commands from this checkout:
+Run the setup script from the repo root:
 
 ```bash
-scripts/register-claude-skills.sh
+scripts/setup.sh
 ```
 
-The script creates symlinks under `~/.claude/skills`:
+The script does two things:
+
+- installs the local Claude slash commands from this checkout
+- prompts you to install and authorize the required connectors
+
+Slash commands are registered as symlinks under `~/.claude/skills`:
 
 ```text
 ~/.claude/skills/deal-read -> <repo>/deal-read
@@ -30,13 +35,33 @@ The script creates symlinks under `~/.claude/skills`:
 ~/.claude/skills/pipeline-hygiene -> <repo>/pipeline-read/commands/pipeline-hygiene
 ```
 
+Required connectors:
+
+- Salesforce: opportunity truth, CRM fields, and hygiene mode
+- Gmail: email freshness and thread evidence
+- Zoom: current implemented call provider
+- Slack: mapped deal-room evidence
+- Google Drive: linked proposal and deal-room documents
+
+All source access should remain read-only. `deal-read` may only create a Gmail draft after explicit confirmation.
+
 If Claude skills live somewhere else on your machine, set `CLAUDE_SKILLS_DIR`:
 
 ```bash
-CLAUDE_SKILLS_DIR="$HOME/.config/claude/skills" scripts/register-claude-skills.sh
+CLAUDE_SKILLS_DIR="$HOME/.config/claude/skills" scripts/setup.sh
 ```
 
-The script will not replace an existing non-symlink skill folder unless run with `--force`.
+The script will not replace an existing non-symlink skill folder unless run with `--force`:
+
+```bash
+scripts/setup.sh --force
+```
+
+For non-interactive setup, pass `--yes` to skip the connector confirmation prompt:
+
+```bash
+scripts/setup.sh --yes
+```
 
 ## 3. Verify the repo
 
@@ -71,13 +96,13 @@ For surface-specific behavior, read:
 If a command is missing, rerun:
 
 ```bash
-scripts/register-claude-skills.sh
+scripts/setup.sh
 ```
 
 If a teammate already has a real folder at one of the command paths, the script will skip that command. Review the existing folder first. Then run:
 
 ```bash
-scripts/register-claude-skills.sh --force
+scripts/setup.sh --force
 ```
 
 If tests fail, start with the first failing suite in the `scripts/test.sh` output. The repo has no `pytest` dependency; tests are plain Python files.
