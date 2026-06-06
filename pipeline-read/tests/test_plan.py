@@ -36,7 +36,7 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: read default runs Calendar and Slack/Drive (config default force)",
+    ok &= check("pipeline: read default runs Calendar and mapped Slack/Drive",
                 p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
@@ -88,7 +88,7 @@ def main():
     ok &= check("forecast: category field selected", "ForecastCategoryName" in fq)
     ok &= check("forecast: amount field selected", "Added_ARR__c" in fq)
     ok &= check("forecast: no phantom mapping fields in pipeline query", "Slack_Channel__c" not in fq and "Deal_Room_URL__c" not in fq)
-    ok &= check("forecast: default internal is force", pf["forecast"]["internal"] == "force")
+    ok &= check("forecast: default internal is auto", pf["forecast"]["internal"] == "auto")
     ok &= check("forecast: connectors include Calendar, Slack, and Drive when internal on",
                 pf["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
@@ -138,6 +138,13 @@ def main():
     ok &= check("internal auto: no fallback Slack query",
                 "slack" not in missing["internal_evidence"])
 
+    default_internal = run({
+        "deal_name": "Providence Investments", "account_name": "Providence Investments",
+    })
+    ok &= check("internal default: no fallback Slack query",
+                default_internal["internal_evidence"]["mode"] == "auto"
+                and "slack" not in default_internal["internal_evidence"])
+
     force = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
         "forecast": True, "internal": "force",
@@ -146,6 +153,9 @@ def main():
                 force["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal force: broad search allowed only there",
                 force["internal_evidence"]["slack"]["broad_search_allowed"] is True)
+    ok &= check("internal force: pipeline depth caps applied",
+                force["internal_evidence"]["max_messages"] == 40
+                and force["internal_evidence"]["max_linked_docs"] == 3)
 
     # --- Workflow-tool inbox sweep: Gmail query targets known notification senders scoped by name.
     eca = run({"deal_name": "Emerald City Associates", "account_name": "Emerald City Associates",

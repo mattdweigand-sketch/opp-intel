@@ -1,5 +1,7 @@
 # PRD: opp-intel Shared Core
 
+Historical note: this PRD records the migration plan that produced the current shared-core repo. The active command surface is `/pipeline-read`, `/pipeline-forecast`, and `/pipeline-hygiene`; old `/pipeline-triage` references are superseded.
+
 ## Summary
 
 Build `opp-intel` as the shared parent system for `deal-read` and `pipeline-read`.
@@ -180,7 +182,7 @@ opp-intel/
     ├── README.md
     ├── SKILL.md
     ├── commands/
-    │   ├── pipeline-triage/
+    │   ├── pipeline-read/
     │   ├── pipeline-forecast/
     │   └── pipeline-hygiene/
     └── tests/
@@ -247,7 +249,7 @@ Used by `deal-read`.
 
 ### Pipeline Profile
 
-Used by `/pipeline-triage` and `/pipeline-forecast`.
+Used by `/pipeline-read` and `/pipeline-forecast`.
 
 ```json
 {

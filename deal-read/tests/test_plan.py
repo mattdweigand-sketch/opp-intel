@@ -16,6 +16,11 @@ def run(ctx):
     return json.loads(p.stdout)
 
 
+def run_fail(ctx):
+    return subprocess.run([sys.executable, PLAN], input=json.dumps(ctx),
+                          capture_output=True, text=True)
+
+
 def check(name, cond):
     print(("PASS" if cond else "FAIL"), name)
     return cond
@@ -58,6 +63,10 @@ def main():
     empty = run({})
     ok &= check("empty: calendar gap named", empty["calendar"]["coverage"] == "insufficient_context")
 
+    blocked = run_fail({"mode": "pipeline", "today": "2026-06-06", "owner_id": "005X"})
+    ok &= check("deal surface: pipeline mode rejected",
+                blocked.returncode != 0 and "does not emit pipeline" in blocked.stderr)
+
     # Internal evidence (Slack + Drive) — auto is mapped-room only; force permits fallback.
     auto = run({"account_name": "Providence Investments"})
     ok &= check("internal auto: no room reports source gap",
@@ -74,6 +83,9 @@ def main():
                 forced["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal force: broad search allowed",
                 forced["internal_evidence"]["broad_search_allowed"] is True)
+    ok &= check("internal force: deal depth caps applied",
+                forced["internal_evidence"]["max_messages"] == 80
+                and forced["internal_evidence"]["max_linked_docs"] == 5)
     ok &= check("internal force: linked docs emitted",
                 forced["internal_evidence"]["linked_docs"]["source"] == "google_drive")
     disabled = run({"account_name": "Providence Investments", "internal": "off"})

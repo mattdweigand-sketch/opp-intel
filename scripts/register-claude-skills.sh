@@ -34,8 +34,6 @@ register_skill "pipeline-hygiene" "$repo_root/pipeline-read/commands/pipeline-hy
 old_triage="$skills_dir/pipeline-triage"
 if [[ -L "$old_triage" ]]; then
   old_target="$(readlink "$old_triage")"
-  if [[ "$old_target" == "$repo_root/pipeline-read/commands/pipeline-triage" ]]; then
-    rm "$old_triage"
-    printf 'OK   removed old %s -> %s\n' "$old_triage" "$old_target"
-  fi
+  rm "$old_triage"
+  printf 'OK   removed old %s -> %s\n' "$old_triage" "$old_target"
 fi

@@ -141,7 +141,7 @@ def normalize_calendar_evidence(raw):
         )
 
     def compact_event(event):
-        return {
+        compact = {
             "title": event.get("title"),
             "start": event.get("start") or event.get("start_time"),
             "end": event.get("end") or event.get("end_time"),
@@ -150,6 +150,9 @@ def normalize_calendar_evidence(raw):
             "conference_link": event.get("conference_link"),
             "source_ref": event.get("source_ref"),
         }
+        if "buyer_attendees" in event:
+            compact["buyer_attendees"] = event.get("buyer_attendees") or []
+        return compact
 
     historical = first_list(raw.get("historical_meetings"), raw.get("history"))
     upcoming = first_list(raw.get("upcoming_meetings"), raw.get("future"))

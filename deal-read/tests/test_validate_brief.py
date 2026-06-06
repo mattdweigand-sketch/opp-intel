@@ -24,6 +24,12 @@ def footer(flags):
     return "```json\n" + json.dumps({"deal_metrics": {"flags": flags}}) + "\n```"
 
 
+def footer_with_gaps(gaps):
+    return "```json\n" + json.dumps({
+        "deal_metrics": {"flags": {"email_data_stale": False}, "coverage_gaps": gaps}
+    }) + "\n```"
+
+
 def main():
     ok = True
 
@@ -55,6 +61,12 @@ def main():
         "Computed inputs:\n" + footer({"email_data_stale": False})
     )
     ok &= check("High + fresh passes", rc == 0)
+
+    rc, out = run(
+        "Confidence: High, calls and emails current.\n\n"
+        "Computed inputs:\n" + footer_with_gaps(["email_connector_degraded"])
+    )
+    ok &= check("High + coverage gap fails", rc == 1 and "coverage gaps" in out)
 
     # Missing confidence line fails.
     rc, out = run("Computed inputs:\n" + footer({"email_data_stale": False}))

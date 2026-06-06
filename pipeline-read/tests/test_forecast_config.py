@@ -71,7 +71,8 @@ def main():
                 category_group("Omitted", cat["convention"]) == "unknown")
 
     internal = model["internal_evidence"]
-    ok &= check("internal: default force", internal["default"] == "force")
+    ok &= check("internal: default auto", internal["default"] == "auto")
+    ok &= check("internal: pipeline default auto", internal["default_by_profile"]["pipeline"] == "auto")
     ok &= check("internal: force-required fallback configured",
                 sf["internal_sources"]["slack_deal_room"]["fallback_requires_internal_force"] is True)
 

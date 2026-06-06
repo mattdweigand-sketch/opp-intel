@@ -25,7 +25,7 @@ Thin command frontend. The engine, shared config, and full pipeline live in this
 
 `/pipeline-read` runs the current fiscal quarter. `--next-quarter` / `--window current_quarter|next_quarter|30d`
 choose the window. `--internal auto|off|force` and `--internal-window 30d` tune internal evidence
-(default is the engine's `internal_evidence.default`). The forecast-only knobs (`--posture`,
+(default is `auto`: mapped rooms and linked docs only). The forecast-only knobs (`--posture`,
 `--amount-basis`, `--compare`) belong to `/pipeline-forecast`; if asked for those, route there.
 
 ## Hand off

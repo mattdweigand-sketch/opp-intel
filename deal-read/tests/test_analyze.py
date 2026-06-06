@@ -110,6 +110,7 @@ def main():
                 {
                     "title": "Legal review",
                     "start": "2026-06-10T15:00:00Z",
+                    "buyer_attendees": ["buyer@example.com"],
                     "conference_link": "https://meet.example/abc",
                     "source_ref": "calendar:event-2",
                 }
@@ -119,6 +120,10 @@ def main():
     calendar = r["calendar_evidence"]
     ok &= check("calendar: historical meeting preserved", calendar["historical_meetings"][0]["title"] == "Discovery")
     ok &= check("calendar: upcoming meeting preserved", calendar["upcoming_meetings"][0]["source_ref"] == "calendar:event-2")
+    ok &= check("calendar: buyer attendees preserved",
+                calendar["upcoming_meetings"][0]["buyer_attendees"] == ["buyer@example.com"])
+    ok &= check("calendar: buyer attendee prevents no-buyer flag",
+                r["deal_metrics"]["flags"]["calendar_next_meeting_no_buyer_attendees"] is False)
 
     r = run({"compute_input": {}, "calendar_evidence": {"coverage": "insufficient_context"}})
     ok &= check("calendar: source gap preserved", "calendar_context_missing" in r["calendar_evidence"]["source_gaps"])

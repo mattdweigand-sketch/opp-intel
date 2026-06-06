@@ -59,7 +59,7 @@
       "mode": "forecast",
       "posture": "conservative",
       "amount_basis": "acv",
-      "internal_evidence": "force"
+      "internal_evidence": "auto"
     },
     "rep_name": "Matthew Weigand",
     "window": {
@@ -214,7 +214,7 @@
       ]
     },
     "internal_evidence": {
-      "mode": "force",
+      "mode": "auto",
       "deal_room_coverage": {
         "mapped": 0,
         "missing": 0,

@@ -87,6 +87,12 @@ def coverage_gaps_for(deal):
     return [str(g) for g in gaps] if isinstance(gaps, list) else []
 
 
+def calendar_gaps_for(deal):
+    calendar = deal_metrics(deal).get("calendar", {}) or {}
+    gaps = calendar.get("source_gaps")
+    return [str(g) for g in gaps] if isinstance(gaps, list) else []
+
+
 def freshness_for(deal):
     return deal_metrics(deal).get("freshness", {}) or {}
 
@@ -168,8 +174,11 @@ def internal_for_deal(deal):
 
 
 def source_gaps_for(deal):
+    gaps = list(coverage_gaps_for(deal))
+    gaps.extend(calendar_gaps_for(deal))
+
     internal = internal_for_deal(deal)
-    gaps = list(internal.get("source_gaps") or [])
+    gaps.extend(internal.get("source_gaps") or [])
     coverage = first_present(
         internal.get("coverage"),
         (internal.get("deal_room") or {}).get("coverage"),
@@ -213,7 +222,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
             "risk_flags": true_flags,
             "last_touch": last_touch,
             "last_touch_source": last_touch_source,
-            "coverage_gaps": coverage_gaps_for(deal),
+            "coverage_gaps": source_gaps_for(deal),
         })
     return rows
 
@@ -236,16 +245,16 @@ def coverage_gap_deals_for(deals):
     names = [
         first_present(d.get("name"), d.get("Name"))
         for d in deals
-        if coverage_gaps_for(d)
+        if source_gaps_for(d)
     ]
     return sorted(n for n in names if n)
 
 
 def aggregate_coverage_gaps(deals):
-    """Union of every in-scope deal's deal_metrics.coverage_gaps (dedup, sorted)."""
+    """Union of every in-scope deal's source gaps (dedup, sorted)."""
     gaps = set()
     for d in deals:
-        gaps.update(coverage_gaps_for(d))
+        gaps.update(source_gaps_for(d))
     return sorted(gaps)
 
 
@@ -662,9 +671,12 @@ def main():
         amount_field = amount_cfg.get("fields", {}).get(amount_basis)
         if not amount_field:
             raise ValueError(f"unknown amount_basis: {bundle.get('amount_basis')}")
+        internal_cfg = model.get("internal_evidence", {})
         internal_mode = normalize_token(
             bundle.get("internal") or bundle.get("internal_evidence_mode")
-            or (model.get("internal_evidence", {}).get("default") if forecast_requested else "off")
+            or (internal_cfg.get("default_by_profile") or {}).get("pipeline")
+            or internal_cfg.get("default")
+            or "off"
         )
         if internal_mode not in {"auto", "off", "force"}:
             raise ValueError(f"unknown internal mode: {bundle.get('internal')}")
@@ -737,6 +749,8 @@ def main():
                     "category_rollup": category_rollup(rows),
                     "recommendations": recommendations,
                 }
+
+            if internal_mode != "off":
                 out["internal_evidence"] = internal_rollup(deals, internal_mode)
 
             prior, source, reason = load_prior(bundle)

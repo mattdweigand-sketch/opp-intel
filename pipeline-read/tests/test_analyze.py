@@ -53,10 +53,15 @@ def main():
         "calendar_evidence": {
             "coverage": "available",
             "history": [{"title": "Discovery", "start_time": "2026-05-20T15:00:00Z"}],
-            "future": [{"title": "Renewal review", "start_time": "2026-06-10T15:00:00Z"}],
+            "future": [{"title": "Renewal review", "start_time": "2026-06-10T15:00:00Z",
+                        "buyer_attendees": ["buyer@example.com"]}],
         },
     })
     ok &= check("calendar evidence preserved", r["calendar_evidence"]["upcoming_meetings"][0]["title"] == "Renewal review")
+    ok &= check("calendar buyer attendees preserved",
+                r["calendar_evidence"]["upcoming_meetings"][0]["buyer_attendees"] == ["buyer@example.com"])
+    ok &= check("calendar buyer attendee prevents no-buyer flag",
+                r["deal_metrics"]["flags"]["calendar_next_meeting_no_buyer_attendees"] is False)
 
     r = run({
         "compute_input": {

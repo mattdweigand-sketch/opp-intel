@@ -39,11 +39,20 @@ def main():
                 and profiles["hygiene"]["calls"] == "off")
     ok &= check("deal profile is one opportunity", profiles["deal"]["scope"] == "one_opportunity")
     ok &= check("pipeline profile is many opportunities", profiles["pipeline"]["scope"] == "many_opportunities")
+    ok &= check("pipeline internal default remains bounded",
+                model["internal_evidence"]["default_by_profile"]["pipeline"] == "auto")
+    ok &= check("pipeline internal depth caps are shallower than deal",
+                profiles["pipeline"]["slack"]["max_messages"] < profiles["deal"]["slack"]["max_messages"]
+                and profiles["pipeline"]["drive"]["max_docs"] < profiles["deal"]["drive"]["max_docs"])
     ok &= check("shared sf fields preserve deal depth", "Decision_Maker__c" in fields["opportunity_fields"])
     ok &= check("shared sf fields include pipeline scope", "pipeline_scope" in fields)
     ok &= check("contact role grounding preserved", {"Role", "IsPrimary"}.issubset(set(fields["contact_fields"])))
     ok &= check("read-only source contract", contracts["read_policy"]["sources_are_read_only"] is True)
     ok &= check("calendar source contract", contracts["sources"]["calendar"]["profiles"] == ["deal", "pipeline"])
+    ok &= check("connector status aliases documented",
+                "gmail" in contracts["sources"]["gmail"]["status_key_aliases"]
+                and "google_calendar" in contracts["sources"]["calendar"]["status_key_aliases"]
+                and "calls_zoom" in contracts["sources"]["calls"]["status_key_aliases"])
     ok &= check("calendar flags excluded from hygiene precedence",
                 all(not flag.startswith("calendar_") for flag in model["hygiene"]["flag_precedence"]))
     ok &= check("deal draft confirmation contract",

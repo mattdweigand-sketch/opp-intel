@@ -87,13 +87,20 @@ def validate(text):
         errors.append("Confidence line missing. Lead the brief with a Confidence rating.")
 
     if computed and confidence == "High":
-        stale = (
-            computed.get("deal_metrics", {}).get("flags", {}).get("email_data_stale") is True
-        )
+        metrics = computed.get("deal_metrics", {})
+        stale = metrics.get("flags", {}).get("email_data_stale") is True
+        coverage_gaps = metrics.get("coverage_gaps") or []
+        calendar_gaps = (metrics.get("calendar") or {}).get("source_gaps") or []
+        internal_gaps = (computed.get("internal_evidence") or {}).get("source_gaps") or []
         if stale:
             errors.append(
                 "Confidence is High but email_data_stale is true. Stale email data cannot "
                 "support a High rating. Lower it and name what you could not see."
+            )
+        if coverage_gaps or calendar_gaps or internal_gaps:
+            errors.append(
+                "Confidence is High but computed inputs show coverage gaps. Lower it and "
+                "name what you could not see."
             )
 
     return errors

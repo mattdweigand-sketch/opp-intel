@@ -313,6 +313,17 @@ def main():
                 "calendar_connector_degraded" not in r["coverage_gaps"]
                 and "salesforce_connector_degraded" not in r["coverage_gaps"])
 
+    r = run({
+        "today": "2026-06-06",
+        "connector_status": {"gmail": "timeout", "google_calendar": "error", "calls_zoom": "partial"},
+    })
+    ok &= check("degraded aliases: gmail maps to email",
+                "email_connector_degraded" in r["coverage_gaps"])
+    ok &= check("degraded aliases: google_calendar maps to calendar",
+                "calendar_connector_degraded" in r["coverage_gaps"])
+    ok &= check("degraded aliases: calls_zoom maps to zoom",
+                "zoom_connector_degraded" in r["coverage_gaps"])
+
     # Regression / INVARIANT: identical input with NO connector_status must behave
     # exactly as before — single_threaded still fires off email-observed basis, the
     # email counts are populated, and no *_connector_degraded gap is emitted.

@@ -19,7 +19,7 @@ Pipeline Read has three views, all over the same engine. The mode is set by the 
   forecast posture, category rollup, keep/downgrade/inspect labels, movement from a prior Computed
   inputs artifact when supplied, internal evidence coverage, and evidence gaps.
 - `/pipeline-hygiene`: the CRM data-quality view. It asks a different question — not "is this deal at
-  risk?" but "is the Salesforce *record* clean?" — and tags each opp with its single dominant data gap
+  risk?" but "is the Salesforce *record* clean?" - and tags each opp with its single dominant data gap
   (no contacts, single-threaded, no champion, missing amount, missing next step, stale activity,
   overdue close). It is deliberately cheap and **Salesforce-only**: no Gmail, Calendar, Zoom, Slack, or Drive, and
   no per-deal fan-out, so it stays fast even on a large pipeline. It names gaps and **proposes no fixes**
@@ -94,8 +94,9 @@ scores.
 Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
 affect meeting-cadence flags in read and forecast. Slack deal rooms and linked proposal docs can
 affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
-deterministic ranking or Salesforce-owned fields. Broad Slack or Drive lookup is allowed only when the
-internal mode is `force` (the default); `auto` restricts to mapped deal rooms only.
+deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which restricts
+evidence to mapped deal rooms and linked docs. Broad Slack fallback lookup is allowed only when the
+internal mode is explicitly `force`.
 
 ---
 
@@ -105,7 +106,8 @@ internal mode is `force` (the default); `auto` restricts to mapped deal rooms on
    `AGENTS.md`, then `CONTEXT.md`.
 2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Gmail,
    Calendar, and Zoom are always part of read and forecast. Slack and Google Drive are the internal
-   evidence lane; use `--internal off` only to skip those internal sources.
+   evidence lane; default `auto` reads mapped rooms and linked docs only. Use `--internal force` for
+   bounded fallback lookup or `--internal off` to skip those internal sources.
 3. Ask: `/pipeline-read` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
@@ -152,7 +154,7 @@ Shape:
   "run": {
     "rep_name": "...",
     "run_date": "...",
-    "mode": "read|forecast",
+    "mode": "read|forecast|hygiene",
     "posture": "conservative|defend_commit|identify_upside",
     "amount_basis": "acv|crm_primary_amount",
     "internal_evidence": "auto|off|force"
@@ -160,19 +162,20 @@ Shape:
   "portfolio": {},
   "forecast": {},
   "internal_evidence": {},
+  "hygiene": {},
   "movement": {},
   "ranking": []
 }
 ```
 
-`forecast`, `internal_evidence`, and `movement` appear only when the run needs them.
+`forecast`, `internal_evidence`, `hygiene`, and `movement` appear only when the run needs them.
 
 ---
 
 ## Relationship to Deal Read
 
-[Deal Read](https://github.com/mattdweigand-sketch/deal-read) is the per-deal sibling. Pipeline Read
-reuses its deterministic core verbatim, but runs as a standalone pipeline-level skill.
+`../deal-read` is the per-deal sibling inside this repo. Both surfaces use the shared deterministic
+mechanics in `../core`; neither owns the other's runtime.
 
 ---
 

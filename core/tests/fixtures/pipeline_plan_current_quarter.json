@@ -33,8 +33,8 @@
       "mode": "force",
       "window_days": 30,
       "mapping_fields": [],
-      "max_messages": 80,
-      "max_linked_docs": 5,
+      "max_messages": 40,
+      "max_linked_docs": 3,
       "signals": [
         "deal_desk_blocker",
         "legal_blocker",
@@ -71,7 +71,7 @@
         ],
         "terms": [],
         "window_days": 30,
-        "max_messages": 80,
+        "max_messages": 40,
         "broad_search_allowed": true,
         "requires_internal_force": true
       },
@@ -81,7 +81,7 @@
         "allowed_sources": [
           "google_drive"
         ],
-        "max_docs": 5,
+        "max_docs": 3,
         "allowed_when": [
           "linked_from_deal_room",
           "explicit_deal_context"

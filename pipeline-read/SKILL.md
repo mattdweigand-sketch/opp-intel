@@ -7,8 +7,8 @@ description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline
 
 Coach one rep across their whole forecast. Pull that rep's own Salesforce, Gmail, Google Calendar, and Zoom data for
 every open opportunity closing inside the current fiscal quarter by default, add mapped Slack deal-room and linked
-proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the same deal-risk model
-`deal-read` uses, and roll the results up into one ranked read. Read-only across all sources. Makes
+proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the shared
+deal-risk model in `../core`, and roll the results up into one ranked read. Read-only across all sources. Makes
 no writes at all, not even a draft.
 
 ## Input
@@ -92,7 +92,7 @@ pipeline aggregation, once over all deals).
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
   batched `contact_roles_bulk` query and the `champion_roles` list.
-- **`scripts/analyze.py`** — the per-deal processing entrypoint (copied from `deal-read`). Feed it one
+- **`scripts/analyze.py`** — the per-deal processing entrypoint. Feed it one
   deal's bundle; it runs `compute.py` + `callstats.py` and parses account history. Run it once per
   in-scope deal.
 - **`scripts/rollup.py`** — the pipeline aggregator. Feed it every per-deal `analyze.py` output; it

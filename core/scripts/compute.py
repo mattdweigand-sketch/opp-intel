@@ -50,6 +50,12 @@ def days_between(later, earlier):
 
 
 DEGRADED_STATUSES = {"timeout", "error", "partial"}
+CONNECTOR_STATUS_ALIASES = {
+    "gmail": "email",
+    "google_calendar": "calendar",
+    "calls_zoom": "zoom",
+    "zoom_calls": "zoom",
+}
 
 
 def main():
@@ -60,7 +66,11 @@ def main():
     # cleanly cannot assert a negative finding: its silence is a coverage gap,
     # not evidence the prospect went quiet. Absent/unknown/"ok"/"empty" are NOT
     # degraded; only "timeout"/"error"/"partial" are. See source-contracts.json.
-    connector_status = snap.get("connector_status") or {}
+    raw_connector_status = snap.get("connector_status") or {}
+    connector_status = {}
+    for raw_name, status in raw_connector_status.items():
+        name = CONNECTOR_STATUS_ALIASES.get(str(raw_name).strip().lower(), str(raw_name).strip().lower())
+        connector_status[name] = status
     degraded_connectors = [
         name
         for name in ("email", "zoom", "calendar", "salesforce")

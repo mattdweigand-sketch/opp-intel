@@ -121,6 +121,28 @@ def main():
     ok &= check("coverage gap: ranking order unchanged vs no-gap bundle",
                 [r["name"] for r in with_gap["ranking"]] == [r["name"] for r in no_gap["ranking"]])
 
+    calendar_gap = gap_deal("Calendar Gap", 60000, 12, {})
+    calendar_gap["analyze_output"]["deal_metrics"]["calendar"] = {
+        "coverage": "unavailable",
+        "source_gaps": ["calendar_unavailable"],
+    }
+    internal_gap = gap_deal("Internal Gap", 50000, 12, {})
+    internal_gap["internal_evidence"] = {
+        "deal_room": {"coverage": "deal_room_missing"},
+        "source_gaps": ["deal_room_missing"],
+    }
+    gap_sources = run({"mode": "read", "deals": [calendar_gap, internal_gap]})
+    ok &= check("source gaps: calendar gap reaches top-level source_gaps",
+                "calendar_unavailable" in gap_sources["source_gaps"])
+    ok &= check("source gaps: internal gap reaches top-level source_gaps",
+                "deal_room_missing" in gap_sources["source_gaps"])
+    ok &= check("source gaps: read mode includes internal evidence rollup",
+                gap_sources["run"]["internal_evidence"] == "auto"
+                and gap_sources["internal_evidence"]["deal_room_coverage"]["missing"] == 1)
+    ok &= check("source gaps: ranked rows carry non-risk gaps",
+                next(r for r in gap_sources["ranking"] if r["name"] == "Calendar Gap")["coverage_gaps"] == ["calendar_unavailable"]
+                and next(r for r in gap_sources["ranking"] if r["name"] == "Internal Gap")["coverage_gaps"] == ["deal_room_missing"])
+
     # Backward compat: a bundle with no coverage_gaps/freshness yields empty gaps + null last_touch.
     legacy = run({"mode": "read", "deals": [deal("Legacy", 10000, 5, {"single_threaded": True})]})
     ok &= check("legacy: source_gaps empty when no coverage_gaps", legacy.get("source_gaps") == [])

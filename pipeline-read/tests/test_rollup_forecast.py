@@ -90,6 +90,30 @@ def main():
     ok &= check("internal signal: source ref preserved",
                 out["internal_evidence"]["signals"][0]["source_ref"] == "C123/1710000000")
 
+    gap_forecast = run({
+        "mode": "forecast",
+        "internal": "auto",
+        "deals": [
+            deal("Calendar Gap", "006G", 25000, "Commit", {}),
+            deal("Internal Gap", "006H", 20000, "Commit", {}, {
+                "deal_room": {"coverage": "deal_room_missing"},
+                "source_gaps": ["deal_room_missing"],
+            }),
+        ],
+    })
+    gap_forecast["ranking"][0]  # smoke
+    ok &= check("forecast gaps: internal gap reaches top-level source_gaps",
+                "deal_room_missing" in gap_forecast["source_gaps"])
+    # Mutate via the input fixture shape to confirm Calendar source gaps also aggregate.
+    calendar_deal = deal("Calendar Only Gap", "006I", 30000, "Commit", {})
+    calendar_deal["analyze_output"]["deal_metrics"]["calendar"] = {
+        "coverage": "unavailable",
+        "source_gaps": ["calendar_unavailable"],
+    }
+    calendar_gap_run = run({"mode": "forecast", "internal": "off", "deals": [calendar_deal]})
+    ok &= check("forecast gaps: calendar gap reaches top-level source_gaps",
+                "calendar_unavailable" in calendar_gap_run["source_gaps"])
+
     # Regression: category_rollup must honor amount_basis, not silently sum CRM amount.
     # Each deal carries a distinct acv and a larger CRM amount; the rollup total must
     # follow the requested basis. (Previously amount_for_basis returned deal["amount"]

@@ -156,6 +156,9 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         return None
 
     cfg = model.get("internal_evidence", {})
+    profile_cfg = load("depth-profiles.json").get(profile, {})
+    slack_profile = profile_cfg.get("slack", {}) if isinstance(profile_cfg.get("slack"), dict) else {}
+    drive_profile = profile_cfg.get("drive", {}) if isinstance(profile_cfg.get("drive"), dict) else {}
     source_cfg = fields.get("internal_sources", {})
     room_cfg = source_cfg.get("slack_deal_room", {})
     doc_cfg = source_cfg.get("linked_docs", {})
@@ -178,8 +181,8 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         "mode": mode,
         "window_days": int(ctx.get("internal_window") or cfg.get("default_window_days", 30)),
         "mapping_fields": mapping_fields,
-        "max_messages": cfg.get("max_messages_per_room", 80),
-        "max_linked_docs": cfg.get("max_linked_docs_per_room", 5),
+        "max_messages": slack_profile.get("max_messages", cfg.get("max_messages_per_room", 80)),
+        "max_linked_docs": drive_profile.get("max_docs", cfg.get("max_linked_docs_per_room", 5)),
         "signals": cfg.get("signals", []),
         "broad_search_allowed": mode == "force",
     }

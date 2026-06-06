@@ -31,14 +31,15 @@
       "plan": "emit_soql_or_related_record_plan",
       "normalize": "salesforce_evidence",
       "profiles": ["deal", "pipeline", "hygiene"],
-      "status_key": "salesforce",
-      "status": "Reports execution_status under connector_status.salesforce; degraded yields salesforce_connector_degraded coverage gap."
+    "status_key": "salesforce",
+    "status": "Reports execution_status under connector_status.salesforce; degraded yields salesforce_connector_degraded coverage gap."
     },
     "gmail": {
       "plan": "emit_thread_and_sent_freshness_plan",
       "normalize": "email_evidence",
       "profiles": ["deal", "pipeline"],
       "status_key": "email",
+      "status_key_aliases": ["gmail"],
       "status": "Reports execution_status under connector_status.email; degraded yields email_connector_degraded and neutralizes email-derived negative assertions (see execution_status.email_degraded_neutralization)."
     },
     "calendar": {
@@ -46,6 +47,7 @@
       "normalize": "calendar_evidence",
       "profiles": ["deal", "pipeline"],
       "status_key": "calendar",
+      "status_key_aliases": ["google_calendar"],
       "status": "Reports execution_status under connector_status.calendar; degraded yields calendar_connector_degraded coverage gap."
     },
     "calls": {
@@ -54,6 +56,7 @@
       "normalize": "call_evidence",
       "profiles": ["deal", "pipeline"],
       "status_key": "zoom",
+      "status_key_aliases": ["calls_zoom", "zoom_calls"],
       "status": "Reports execution_status under connector_status.zoom; degraded yields zoom_connector_degraded coverage gap."
     },
     "slack": {
