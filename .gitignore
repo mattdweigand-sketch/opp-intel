@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+.Codex/settings.local.json
+.claude/settings.local.json
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+forecast-2026-06-05-two-closest.md

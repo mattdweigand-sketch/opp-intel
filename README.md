@@ -27,4 +27,4 @@ opp-intel/
 
 ## Migration Status
 
-The migration is phased and not complete yet. Phases 0 to 2 establish baseline fixtures, repo shape, shared config, depth profiles, source contracts, and schemas. Later phases move scripts, planning adapters, rollup, validators, and finally thin the surface docs.
+The shared-core migration is complete through the planned Phase 6 extraction. Surface scripts remain as compatibility wrappers; shared mechanics now live under `core/`.
