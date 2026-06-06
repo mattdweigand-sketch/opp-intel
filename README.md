@@ -149,29 +149,15 @@ Use the surface docs for surface-specific behavior:
 - `pipeline-read/AGENTS.md`
 - `pipeline-read/SKILL.md`
 
-## Tests
+## Verify changes
 
-The tests are plain Python files. They do not require `pytest`.
-
-Run shared core tests:
+Run the full local gate before changing shared core behavior:
 
 ```bash
-for f in core/tests/test_*.py; do python3 "$f" || exit 1; done
+scripts/test.sh
 ```
 
-Run the deal surface tests:
-
-```bash
-cd deal-read
-for f in tests/test_*.py; do python3 "$f" || exit 1; done
-```
-
-Run the pipeline surface tests:
-
-```bash
-cd pipeline-read
-for f in tests/test_*.py; do python3 "$f" || exit 1; done
-```
+The gate runs shared core tests, the `deal-read` surface tests, and the `pipeline-read` surface tests.
 
 ## Working rules
 
