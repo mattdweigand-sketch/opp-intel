@@ -48,6 +48,7 @@
         "clm_stage",
         "legal_task_stage"
       ],
+      "channel_search_allowed": true,
       "broad_search_allowed": true,
       "slack": {
         "query_type": "bounded_fallback_lookup",
@@ -57,7 +58,7 @@
             "action": "slack_search_channels",
             "terms": [],
             "channel_types": "public_channel,private_channel",
-            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
+            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip remaining steps",
             "on_no_match": "proceed to step 2"
           },
           {
@@ -72,6 +73,7 @@
         "terms": [],
         "window_days": 30,
         "max_messages": 40,
+        "channel_search_allowed": true,
         "broad_search_allowed": true,
         "requires_internal_force": true
       },

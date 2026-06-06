@@ -31,7 +31,8 @@ Five connectors. All reads are read-only. The one write this skill can make is c
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`; `create_draft` (draft only, §6)
-- **Slack** — mapped deal-room lookup by default; pass internal=force for bounded fallback lookup
+- **Slack** — mapped deal-room lookup first; auto can run bounded channel-name lookup, and
+  internal=force adds bounded message-content lookup
   by account/opp name, or internal=off to skip
 - **Google Drive** — proposal docs linked from the mapped Slack room or explicit deal context only
 

@@ -94,9 +94,9 @@ scores.
 Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
 affect meeting-cadence flags in read and forecast. Slack deal rooms and linked proposal docs can
 affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
-deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which restricts
-evidence to mapped deal rooms and linked docs. Broad Slack fallback lookup is allowed only when the
-internal mode is explicitly `force`.
+deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which uses mapped
+deal rooms first and then bounded Slack channel-name lookup when no mapping exists. Slack
+message-content fallback is allowed only when the internal mode is explicitly `force`.
 
 ---
 

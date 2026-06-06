@@ -51,7 +51,8 @@
     "slack_deal_room": {
       "mapping_fields": [],
       "fallback_lookup": "account_or_opportunity_name",
-      "fallback_requires_internal_force": true
+      "channel_lookup_in_auto": true,
+      "message_search_requires_internal_force": true
     },
     "linked_docs": {
       "allowed_sources": ["google_drive"],

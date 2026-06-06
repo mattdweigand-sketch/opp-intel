@@ -184,6 +184,7 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         "max_messages": slack_profile.get("max_messages", cfg.get("max_messages_per_room", 80)),
         "max_linked_docs": drive_profile.get("max_docs", cfg.get("max_linked_docs_per_room", 5)),
         "signals": cfg.get("signals", []),
+        "channel_search_allowed": True,
         "broad_search_allowed": mode == "force",
     }
 
@@ -204,22 +205,18 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         }
         return out
 
-    if mode == "auto":
-        out["coverage"] = "deal_room_missing"
-        out["source_gaps"] = ["deal_room_missing"]
-        return out
-
-    out["slack"] = {
-        "query_type": "bounded_fallback_lookup",
-        "steps": [
-            {
-                "step": 1,
-                "action": "slack_search_channels",
-                "terms": account_or_deal,
-                "channel_types": "public_channel,private_channel",
-                "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
-                "on_no_match": "proceed to step 2",
-            },
+    steps = [
+        {
+            "step": 1,
+            "action": "slack_search_channels",
+            "terms": account_or_deal,
+            "channel_types": "public_channel,private_channel",
+            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip remaining steps",
+            "on_no_match": "set coverage=deal_room_missing" if mode == "auto" else "proceed to step 2",
+        }
+    ]
+    if mode == "force":
+        steps.append(
             {
                 "step": 2,
                 "action": "slack_search_public_and_private",
@@ -227,13 +224,18 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
                 "window_days": out["window_days"],
                 "on_match": "capture signals with source_refs; set coverage=checked_no_match",
                 "on_no_match": "set coverage=checked_no_match; no signals",
-            },
-        ],
+            }
+        )
+
+    out["slack"] = {
+        "query_type": "bounded_fallback_lookup",
+        "steps": steps,
         "terms": account_or_deal,
         "window_days": out["window_days"],
         "max_messages": out["max_messages"],
-        "broad_search_allowed": True,
-        "requires_internal_force": True,
+        "channel_search_allowed": True,
+        "broad_search_allowed": mode == "force",
+        "requires_internal_force": mode == "force",
     }
     out["linked_docs"] = {
         "source": "google_drive",

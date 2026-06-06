@@ -66,8 +66,8 @@ that lives in `deal-read`.
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`
-- **Slack** — mapped deal-room reads only in `internal=auto`; bounded fallback lookup only in
-  `internal=force`
+- **Slack** — mapped deal-room reads first; `internal=auto` may run bounded channel-name lookup when
+  no mapping exists; `internal=force` also permits bounded message-content lookup
 - **Google Drive** — proposal docs linked from the mapped Slack room or explicit deal context only
 
 **Hygiene mode is Salesforce-only.** It reads the portfolio list plus one batched
@@ -154,8 +154,10 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    all non-null Email values from both result sets. Use the full union as the email list for
    `thread_search` — do not rely solely on whatever `contact_emails` was passed in. This catches
    contacts logged on the account but not yet added as opp contact roles.
-   - `internal=auto`: use only mapped Slack deal rooms from the configured Salesforce mapping fields.
-     If no room is mapped, record `deal_room_missing`; do not broad-search Slack.
+   - `internal=auto`: use mapped Slack deal rooms from the configured Salesforce mapping fields first.
+     If no room is mapped, execute the emitted `slack_search_channels` step against account/deal terms.
+     If a named channel matches, read up to `max_messages` and set `coverage=found`; if none matches,
+     set `coverage=deal_room_missing`. Do not run Slack message-content search in auto.
    - `internal=off`: emit and gather no Slack or linked-doc evidence.
    - `internal=force`: execute the `steps` array `plan.py` emits — **in order, no skipping**:
      **Step 1** — call `slack_search_channels` with each term, including `private_channel`. If any
@@ -514,5 +516,5 @@ reps; it does not write to Open Brain or deal-management.
   `pipeline-read` takes no outbound action and makes no writes of any kind.
 - No Sales plugin dependency. Downstream workflows may cite the Computed inputs JSON but should not
   re-score or rewrite its deterministic labels.
-- Broad Slack or Drive lookup is allowed only under `internal=force`; `internal=auto` uses mapped deal
-  rooms and linked proposal docs only.
+- Slack message-content lookup is allowed only under `internal=force`; `internal=auto` uses mapped rooms
+  or bounded channel-name lookup. Drive stays limited to linked proposal docs or explicit deal context.

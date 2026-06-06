@@ -45,8 +45,8 @@ def main():
 
     ok &= check("SKILL no longer describes forecast as only forecast-realism",
                 "forecast-realism view" not in text)
-    ok &= check("SKILL routes broad internal lookup through force",
-                "Broad Slack or Drive lookup is allowed only under `internal=force`" in text)
+    ok &= check("SKILL routes message-content lookup through force",
+                "Slack message-content lookup is allowed only under `internal=force`" in text)
     ok &= check("SKILL does not advertise removed /pipeline-triage command",
                 "/pipeline-triage" not in text
                 and "pipeline-triage" not in text)

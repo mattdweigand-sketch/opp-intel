@@ -99,6 +99,7 @@
         "clm_stage",
         "legal_task_stage"
       ],
+      "channel_search_allowed": true,
       "broad_search_allowed": false,
       "slack": {
         "query_type": "mapped_deal_room",

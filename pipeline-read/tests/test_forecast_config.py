@@ -73,8 +73,10 @@ def main():
     internal = model["internal_evidence"]
     ok &= check("internal: default auto", internal["default"] == "auto")
     ok &= check("internal: pipeline default auto", internal["default_by_profile"]["pipeline"] == "auto")
-    ok &= check("internal: force-required fallback configured",
-                sf["internal_sources"]["slack_deal_room"]["fallback_requires_internal_force"] is True)
+    ok &= check("internal: auto channel fallback configured",
+                sf["internal_sources"]["slack_deal_room"]["channel_lookup_in_auto"] is True)
+    ok &= check("internal: force-required message search configured",
+                sf["internal_sources"]["slack_deal_room"]["message_search_requires_internal_force"] is True)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

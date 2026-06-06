@@ -136,17 +136,22 @@ def main():
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
         "forecast": True, "internal": "auto",
     })
-    ok &= check("internal auto: missing room recorded",
-                missing["internal_evidence"]["coverage"] == "deal_room_missing")
-    ok &= check("internal auto: no fallback Slack query",
-                "slack" not in missing["internal_evidence"])
+    ok &= check("internal auto: bounded fallback lookup emitted",
+                missing["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
+    ok &= check("internal auto: channel lookup terms emitted",
+                missing["internal_evidence"]["slack"]["steps"][0]["action"] == "slack_search_channels"
+                and "Providence Investments" in missing["internal_evidence"]["slack"]["terms"])
+    ok &= check("internal auto: no broad message search",
+                len(missing["internal_evidence"]["slack"]["steps"]) == 1
+                and missing["internal_evidence"]["slack"]["broad_search_allowed"] is False)
 
     default_internal = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
     })
-    ok &= check("internal default: no fallback Slack query",
+    ok &= check("internal default: bounded channel lookup emitted",
                 default_internal["internal_evidence"]["mode"] == "auto"
-                and "slack" not in default_internal["internal_evidence"])
+                and default_internal["internal_evidence"]["slack"]["steps"][0]["action"] == "slack_search_channels"
+                and default_internal["internal_evidence"]["slack"]["broad_search_allowed"] is False)
 
     force = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
@@ -156,6 +161,9 @@ def main():
                 force["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal force: broad search allowed only there",
                 force["internal_evidence"]["slack"]["broad_search_allowed"] is True)
+    ok &= check("internal force: message fallback follows channel lookup",
+                [step["action"] for step in force["internal_evidence"]["slack"]["steps"]]
+                == ["slack_search_channels", "slack_search_public_and_private"])
     ok &= check("internal force: pipeline depth caps applied",
                 force["internal_evidence"]["max_messages"] == 40
                 and force["internal_evidence"]["max_linked_docs"] == 3)

@@ -67,12 +67,12 @@ def main():
     ok &= check("deal surface: pipeline mode rejected",
                 blocked.returncode != 0 and "does not emit pipeline" in blocked.stderr)
 
-    # Internal evidence (Slack + Drive) — auto is mapped-room only; force permits fallback.
+    # Internal evidence (Slack + Drive) — auto can find a named room; force adds message fallback.
     auto = run({"account_name": "Providence Investments"})
-    ok &= check("internal auto: no room reports source gap",
-                auto["internal_evidence"]["coverage"] == "deal_room_missing")
+    ok &= check("internal auto: channel fallback emitted",
+                auto["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal auto: broad search not allowed",
-                auto["internal_evidence"]["broad_search_allowed"] is False)
+                auto["internal_evidence"]["slack"]["broad_search_allowed"] is False)
     mapped = run({"account_name": "Providence Investments", "slack_deal_room": "C123"})
     ok &= check("internal auto: mapped room emitted",
                 mapped["internal_evidence"]["slack"]["query_type"] == "mapped_deal_room")
@@ -83,6 +83,9 @@ def main():
                 forced["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal force: broad search allowed",
                 forced["internal_evidence"]["broad_search_allowed"] is True)
+    ok &= check("internal force: message fallback follows channel lookup",
+                [step["action"] for step in forced["internal_evidence"]["slack"]["steps"]]
+                == ["slack_search_channels", "slack_search_public_and_private"])
     ok &= check("internal force: deal depth caps applied",
                 forced["internal_evidence"]["max_messages"] == 80
                 and forced["internal_evidence"]["max_linked_docs"] == 5)

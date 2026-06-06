@@ -46,11 +46,14 @@ def main():
         "forecast": True,
         "internal": "auto",
     })
-    ok &= check("auto missing: missing room coverage recorded",
-                missing["internal_evidence"]["coverage"] == "deal_room_missing")
-    ok &= check("auto missing: no broad slack search",
-                missing["internal_evidence"]["broad_search_allowed"] is False
-                and "slack" not in missing["internal_evidence"])
+    ok &= check("auto missing: channel fallback lookup emitted",
+                missing["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
+    ok &= check("auto missing: channel lookup terms recorded",
+                missing["internal_evidence"]["slack"]["steps"][0]["action"] == "slack_search_channels"
+                and missing["internal_evidence"]["slack"]["terms"] == ["Acme", "Acme Growth Fund"])
+    ok &= check("auto missing: no broad slack message search",
+                missing["internal_evidence"]["slack"]["broad_search_allowed"] is False
+                and len(missing["internal_evidence"]["slack"]["steps"]) == 1)
 
     off = run_script(PLAN, {
         "deal_name": "Acme Growth Fund",

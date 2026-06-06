@@ -60,7 +60,7 @@
       "status": "Reports execution_status under connector_status.zoom; degraded yields zoom_connector_degraded coverage gap."
     },
     "slack": {
-      "plan": "mapped_room_or_force_bounded_lookup",
+      "plan": "mapped_room_or_auto_channel_lookup_or_force_bounded_message_lookup",
       "normalize": "internal_evidence.deal_room",
       "profiles": ["deal", "pipeline"]
     },
