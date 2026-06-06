@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AnalyzedDeal",
+  "type": "object",
+  "required": ["deal_metrics", "account_history"],
+  "properties": {
+    "deal_metrics": { "type": "object" },
+    "call_execution": { "type": ["object", "null"] },
+    "account_history": { "type": "object" },
+    "internal_evidence": { "type": ["object", "null"] },
+    "source_gaps": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

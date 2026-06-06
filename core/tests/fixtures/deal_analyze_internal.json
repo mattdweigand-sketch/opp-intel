@@ -1,0 +1,125 @@
+{
+  "surface": "deal-read",
+  "script": "scripts/analyze.py",
+  "input": {
+    "rep_name": "Matthew Weigand",
+    "compute_input": {
+      "today": "2026-06-03",
+      "opportunity": { "last_activity_date": "2026-06-03" },
+      "contacts_engaged": 2
+    },
+    "prior_opps": [
+      {
+        "Name": "X - May 2020",
+        "StageName": "Lost",
+        "CloseDate": "2020-06-02",
+        "IsWon": false,
+        "JSQ_Loss_Notes__c": "Won't spend $18K at one time."
+      }
+    ],
+    "internal_evidence": {
+      "mode": "auto",
+      "deal_room": {
+        "source": "slack",
+        "coverage": "mapped",
+        "source_ref": "slack:C123"
+      },
+      "linked_docs": [
+        {
+          "source": "google_drive",
+          "title": "Proposal v3",
+          "coverage": "read",
+          "source_ref": "drive:doc-1"
+        }
+      ],
+      "signals": [
+        {
+          "type": "proposal_sent",
+          "summary": "Proposal v3 was shared with procurement.",
+          "source_ref": "drive:doc-1",
+          "confidence": "high"
+        }
+      ]
+    }
+  },
+  "output": {
+    "deal_metrics": {
+      "deal_age_days": null,
+      "days_to_close": null,
+      "days_since_last_activity": 0,
+      "days_in_current_stage": null,
+      "close_date_slippage": null,
+      "contacts_engaged": 2,
+      "engagement_roles": [],
+      "legal_status": null,
+      "freshness": {
+        "newest_email_date": null,
+        "activity_anchor_date": "2026-06-03",
+        "last_outbound_date": null
+      },
+      "email": {
+        "count_out": 0,
+        "count_in": 0,
+        "days_since_last_inbound": null,
+        "unanswered_rep_emails": 0,
+        "median_response_latency_days": null
+      },
+      "flags": {
+        "stale_activity": false,
+        "single_threaded": false,
+        "overdue_close": false,
+        "close_date_slipped": false,
+        "stalled_in_stage": false,
+        "email_data_stale": true,
+        "recent_rep_outbound": false,
+        "economic_buyer_named": false,
+        "champion_identified": false,
+        "paper_not_started": false
+      },
+      "thresholds_used": {
+        "email_window_days": 90,
+        "stale_activity_days": 14,
+        "single_thread_max_contacts": 1,
+        "stalled_in_stage_days": 60,
+        "freshness_gap_days": 5,
+        "recent_outbound_days": 3
+      }
+    },
+    "call_execution": null,
+    "account_history": {
+      "prior_losses": 1,
+      "prior_wins": 0,
+      "most_recent_loss": {
+        "name": "X - May 2020",
+        "close_date": "2020-06-02",
+        "reason": "Won't spend $18K at one time."
+      },
+      "summary": "Lost 1 time(s) on this account. Most recent loss 2020-06-02: Won't spend $18K at one time."
+    },
+    "internal_evidence": {
+      "mode": "auto",
+      "deal_room": {
+        "source": "slack",
+        "coverage": "mapped",
+        "source_ref": "slack:C123"
+      },
+      "linked_docs": [
+        {
+          "source": "google_drive",
+          "title": "Proposal v3",
+          "coverage": "read",
+          "source_ref": "drive:doc-1"
+        }
+      ],
+      "signals": [
+        {
+          "type": "proposal_sent",
+          "summary": "Proposal v3 was shared with procurement.",
+          "source_ref": "drive:doc-1",
+          "confidence": "high"
+        }
+      ],
+      "source_gaps": []
+    }
+  }
+}

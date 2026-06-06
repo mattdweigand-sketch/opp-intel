@@ -1,0 +1,60 @@
+{
+  "surface": "pipeline-read",
+  "script": "scripts/plan.py",
+  "input": {
+    "mode": "pipeline",
+    "rep_name": "Matthew Weigand",
+    "owner_id": "005XX",
+    "today": "2026-06-04",
+    "window": "current_quarter",
+    "internal": "force"
+  },
+  "output": {
+    "salesforce": {
+      "pipeline": "SELECT Id, Name, StageName, CloseDate, Added_ARR__c, Calculated_ACV__c, Amount__c, AccountId, OwnerId, LastActivityDate, ForecastCategoryName, NextStep, Account.Name FROM Opportunity WHERE OwnerId = '005XX' AND IsClosed = false AND CloseDate >= 2026-05-01 AND CloseDate <= 2026-07-31 ORDER BY CloseDate ASC"
+    },
+    "window": {
+      "today": "2026-06-04",
+      "name": "current_quarter",
+      "fiscal_year_start": "02-01",
+      "close_on_or_after": "2026-05-01",
+      "close_on_or_before": "2026-07-31"
+    },
+    "large_run_threshold": 15,
+    "per_deal_connectors": ["Salesforce", "Gmail", "Zoom", "Slack", "Google Drive"],
+    "internal_evidence": {
+      "mode": "force",
+      "window_days": 30,
+      "mapping_fields": [],
+      "max_messages": 80,
+      "max_linked_docs": 5,
+      "signals": [
+        "deal_desk_blocker",
+        "legal_blocker",
+        "procurement_blocker",
+        "security_blocker",
+        "product_gap",
+        "exec_alignment",
+        "implementation_risk",
+        "pricing_approval",
+        "competitive_context"
+      ],
+      "broad_search_allowed": true,
+      "slack": {
+        "query_type": "bounded_fallback_lookup",
+        "terms": [],
+        "window_days": 30,
+        "max_messages": 80,
+        "broad_search_allowed": true,
+        "requires_internal_force": true
+      },
+      "linked_docs": {
+        "source": "google_drive",
+        "relationship": "linked_from_deal_room",
+        "allowed_sources": ["google_drive"],
+        "max_docs": 5,
+        "allowed_when": ["linked_from_deal_room", "explicit_deal_context"]
+      }
+    }
+  }
+}

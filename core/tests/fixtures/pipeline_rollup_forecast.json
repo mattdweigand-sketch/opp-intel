@@ -1,0 +1,188 @@
+{
+  "surface": "pipeline-read",
+  "script": "scripts/rollup.py",
+  "input": {
+    "mode": "forecast",
+    "rep_name": "Matthew Weigand",
+    "window": {
+      "today": "2026-06-04",
+      "close_on_or_before": "2026-06-30"
+    },
+    "deals": [
+      {
+        "name": "Providence",
+        "stage": "X",
+        "acv": 120000,
+        "close_date": "2026-06-30",
+        "forecast_category": "Commit",
+        "analyze_output": {
+          "deal_metrics": {
+            "days_to_close": 16,
+            "flags": {
+              "single_threaded": true,
+              "stale_activity": true,
+              "overdue_close": false,
+              "close_date_slipped": false,
+              "stalled_in_stage": false,
+              "email_data_stale": false
+            }
+          }
+        }
+      },
+      {
+        "name": "Acme",
+        "stage": "X",
+        "acv": 80000,
+        "close_date": "2026-06-30",
+        "forecast_category": "Best Case",
+        "analyze_output": {
+          "deal_metrics": {
+            "days_to_close": -5,
+            "flags": {
+              "single_threaded": false,
+              "stale_activity": true,
+              "overdue_close": true,
+              "close_date_slipped": true,
+              "stalled_in_stage": false,
+              "email_data_stale": true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "output": {
+    "schema_version": "pipeline-read.computed-inputs.v1",
+    "run": {
+      "rep_name": "Matthew Weigand",
+      "run_date": "2026-06-04",
+      "mode": "forecast",
+      "posture": "conservative",
+      "amount_basis": "acv",
+      "internal_evidence": "force"
+    },
+    "rep_name": "Matthew Weigand",
+    "window": {
+      "today": "2026-06-04",
+      "close_on_or_before": "2026-06-30"
+    },
+    "portfolio": {
+      "deal_count": 2,
+      "total_acv": 200000,
+      "acv_at_risk": 200000,
+      "acv_at_risk_pct": 1.0,
+      "deals_at_risk": 2,
+      "by_dominant_flag": {
+        "single_threaded": 1,
+        "overdue_close": 1
+      },
+      "single_threaded": 1,
+      "slipped_or_overdue": 1,
+      "stalled_in_stage": 0,
+      "stale_data_deals": 1
+    },
+    "ranking": [
+      {
+        "opportunity_id": null,
+        "name": "Acme",
+        "stage": "X",
+        "acv": 80000,
+        "amount": 80000,
+        "amount_basis": "acv",
+        "forecast_category": "Best Case",
+        "forecast_category_group": "upside",
+        "close_date": "2026-06-30",
+        "days_to_close": -5,
+        "dominant_flag": "overdue_close",
+        "severity_tier": "red",
+        "flag_count": 4,
+        "risk_flags": ["overdue_close", "close_date_slipped", "stale_activity", "email_data_stale"]
+      },
+      {
+        "opportunity_id": null,
+        "name": "Providence",
+        "stage": "X",
+        "acv": 120000,
+        "amount": 120000,
+        "amount_basis": "acv",
+        "forecast_category": "Commit",
+        "forecast_category_group": "commit",
+        "close_date": "2026-06-30",
+        "days_to_close": 16,
+        "dominant_flag": "single_threaded",
+        "severity_tier": "red",
+        "flag_count": 2,
+        "risk_flags": ["single_threaded", "stale_activity"]
+      }
+    ],
+    "severity_tiers_used": {
+      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage"],
+      "amber": ["stale_activity", "email_data_stale"]
+    },
+    "forecast": {
+      "amount_basis": "acv",
+      "amount_field": "Added_ARR__c",
+      "posture": "conservative",
+      "category_convention": {
+        "commit": ["Commit"],
+        "upside": ["Best Case", "Upside"],
+        "pipeline": ["Pipeline"]
+      },
+      "category_rollup": {
+        "commit": {
+          "count": 1,
+          "amount": 120000,
+          "amount_at_risk": 120000
+        },
+        "upside": {
+          "count": 1,
+          "amount": 80000,
+          "amount_at_risk": 80000
+        },
+        "pipeline": {
+          "count": 0,
+          "amount": 0,
+          "amount_at_risk": 0
+        },
+        "unknown": {
+          "count": 0,
+          "amount": 0,
+          "amount_at_risk": 0
+        }
+      },
+      "recommendations": [
+        {
+          "deal": "Acme",
+          "opportunity_id": null,
+          "current_category": "Best Case",
+          "category_group": "upside",
+          "recommendation": "inspect",
+          "reason_codes": ["close_date_slipped", "email_data_stale", "overdue_close", "stale_activity"],
+          "confidence": "Low"
+        },
+        {
+          "deal": "Providence",
+          "opportunity_id": null,
+          "current_category": "Commit",
+          "category_group": "commit",
+          "recommendation": "inspect",
+          "reason_codes": ["single_threaded", "stale_activity"],
+          "confidence": "Medium"
+        }
+      ]
+    },
+    "internal_evidence": {
+      "mode": "force",
+      "deal_room_coverage": {
+        "mapped": 0,
+        "missing": 0,
+        "unavailable": 0,
+        "checked_no_match": 0
+      },
+      "linked_docs_read": 0,
+      "linked_docs_unavailable": 0,
+      "signals": [],
+      "source_gaps": []
+    }
+  }
+}

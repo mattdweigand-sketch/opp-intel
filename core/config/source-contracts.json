@@ -1,0 +1,39 @@
+{
+  "read_policy": {
+    "sources_are_read_only": true,
+    "pipeline_writes": "none",
+    "deal_read_gmail_draft": "explicit_user_confirmation_only",
+    "no_email_send": true,
+    "no_salesforce_edit": true,
+    "no_slack_post": true,
+    "no_drive_edit": true
+  },
+  "sources": {
+    "salesforce": {
+      "plan": "emit_soql_or_related_record_plan",
+      "normalize": "salesforce_evidence",
+      "profiles": ["deal", "pipeline", "hygiene"]
+    },
+    "gmail": {
+      "plan": "emit_thread_and_sent_freshness_plan",
+      "normalize": "email_evidence",
+      "profiles": ["deal", "pipeline"]
+    },
+    "calls": {
+      "current_provider": "zoom",
+      "future_providers": ["gong"],
+      "normalize": "call_evidence",
+      "profiles": ["deal", "pipeline"]
+    },
+    "slack": {
+      "plan": "mapped_room_or_force_bounded_lookup",
+      "normalize": "internal_evidence.deal_room",
+      "profiles": ["deal", "pipeline"]
+    },
+    "drive": {
+      "plan": "linked_docs_from_explicit_deal_context",
+      "normalize": "internal_evidence.linked_docs",
+      "profiles": ["deal", "pipeline"]
+    }
+  }
+}

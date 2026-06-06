@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PipelineRollup",
+  "type": "object",
+  "required": ["run", "portfolio", "ranking"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "run": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["triage", "forecast", "hygiene"] }
+      },
+      "additionalProperties": true
+    },
+    "portfolio": { "type": "object" },
+    "ranking": { "type": "array", "items": { "type": "object" } },
+    "forecast": { "type": "object" },
+    "hygiene": { "type": "object" },
+    "internal_evidence": { "type": "object" }
+  },
+  "additionalProperties": true
+}

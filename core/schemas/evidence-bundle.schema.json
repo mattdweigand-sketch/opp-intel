@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EvidenceBundle",
+  "type": "object",
+  "required": ["profile", "opportunity", "source_gaps"],
+  "properties": {
+    "profile": { "enum": ["deal", "pipeline", "hygiene"] },
+    "rep": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "opportunity": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "account_id": { "type": "string" },
+        "account_name": { "type": "string" },
+        "stage": { "type": "string" },
+        "amount": { "type": ["number", "null"] },
+        "close_date": { "type": ["string", "null"], "format": "date" },
+        "owner_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "salesforce_evidence": { "type": "object" },
+    "email_evidence": { "type": "object" },
+    "call_evidence": { "type": "object" },
+    "internal_evidence": { "type": "object" },
+    "source_gaps": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,62 @@
+{
+  "deal": {
+    "profile": "deal",
+    "scope": "one_opportunity",
+    "salesforce": "full_opportunity_history",
+    "email": {
+      "thread_depth": "full_relevant_threads",
+      "max_threads": 10,
+      "sent_freshness": true
+    },
+    "calls": {
+      "max_calls": 3,
+      "detail": "summary_plus_transcript",
+      "call_execution": true
+    },
+    "slack": {
+      "mode": "mapped_room_default",
+      "max_messages": 80,
+      "read_pins_and_bookmarks": true
+    },
+    "drive": {
+      "linked_docs": "read_content",
+      "max_docs": 5
+    },
+    "output": "coaching_brief"
+  },
+  "pipeline": {
+    "profile": "pipeline",
+    "scope": "many_opportunities",
+    "salesforce": "portfolio_scope_plus_per_deal_core_fields",
+    "email": {
+      "thread_depth": "bounded_recent_threads",
+      "max_threads": 3,
+      "sent_freshness": true
+    },
+    "calls": {
+      "max_calls": 1,
+      "detail": "summary_first",
+      "call_execution": false
+    },
+    "slack": {
+      "mode": "mapped_room_default",
+      "max_messages": 40,
+      "read_pins_and_bookmarks": true
+    },
+    "drive": {
+      "linked_docs": "coverage_plus_titles",
+      "max_docs": 3
+    },
+    "output": "rollup"
+  },
+  "hygiene": {
+    "profile": "hygiene",
+    "scope": "many_opportunities",
+    "salesforce": "portfolio_scope_plus_contact_roles",
+    "email": "off",
+    "calls": "off",
+    "slack": "off",
+    "drive": "off",
+    "output": "crm_data_quality"
+  }
+}

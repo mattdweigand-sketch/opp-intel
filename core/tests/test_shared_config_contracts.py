@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Phase 2 shared config and contract checks."""
+
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+CORE_CONFIG = os.path.join(ROOT, "core", "config")
+
+
+def load(name):
+    with open(os.path.join(CORE_CONFIG, name)) as f:
+        return json.load(f)
+
+
+def check(name, cond):
+    print(("PASS" if cond else "FAIL"), name)
+    return cond
+
+
+def main():
+    ok = True
+    model = load("risk-model.json")
+    fields = load("sf-fields.json")
+    profiles = load("depth-profiles.json")
+    contracts = load("source-contracts.json")
+
+    ok &= check("shared risk thresholds exist", model["thresholds"]["email_window_days"] == 90)
+    ok &= check("deal legal status preserved", "legal_status" in model)
+    ok &= check("pipeline config exists", "pipeline" in model and "flag_severity" in model["pipeline"])
+    ok &= check("hygiene remains SF-only", profiles["hygiene"]["email"] == "off" and profiles["hygiene"]["calls"] == "off")
+    ok &= check("deal profile is one opportunity", profiles["deal"]["scope"] == "one_opportunity")
+    ok &= check("pipeline profile is many opportunities", profiles["pipeline"]["scope"] == "many_opportunities")
+    ok &= check("shared sf fields preserve deal depth", "Decision_Maker__c" in fields["opportunity_fields"])
+    ok &= check("shared sf fields include pipeline scope", "pipeline_scope" in fields)
+    ok &= check("contact role grounding preserved", {"Role", "IsPrimary"}.issubset(set(fields["contact_fields"])))
+    ok &= check("read-only source contract", contracts["read_policy"]["sources_are_read_only"] is True)
+    ok &= check("deal draft confirmation contract",
+                contracts["read_policy"]["deal_read_gmail_draft"] == "explicit_user_confirmation_only")
+
+    for surface in ("deal-read", "pipeline-read"):
+        local_config = os.path.join(ROOT, surface, "config")
+        ok &= check(f"{surface}: no local copied config", not os.path.exists(local_config))
+
+    print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
+    sys.exit(0 if ok else 1)
+
+
+if __name__ == "__main__":
+    main()

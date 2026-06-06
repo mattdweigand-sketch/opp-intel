@@ -1,0 +1,73 @@
+{
+  "surface": "deal-read",
+  "script": "scripts/plan.py",
+  "input": {
+    "deal_name": "Providence Investments",
+    "opp_id": "006X",
+    "account_id": "001X",
+    "account_name": "Providence Investments",
+    "contact_emails": ["a@x.com", "b@x.com"],
+    "created_date": "2026-05-21",
+    "today": "2026-06-03",
+    "slack_deal_room": "C123"
+  },
+  "output": {
+    "salesforce": {
+      "find": "FIND {Providence Investments*} IN NAME FIELDS RETURNING Opportunity(Id, Name, StageName, CloseDate, LastActivityDate, OwnerId, AccountId)",
+      "opportunity": "SELECT Id, Name, StageName, ForecastCategory, Probability, Type, Added_ARR__c, Calculated_ACV__c, Amount__c, Full_Deal_Amount__c, Added_ACV_Fund_Admin__c, Added_GPX_Forecast__c, CloseDate, CreatedDate, LastActivityDate, NextStep, Next_Steps_Last_Modified_Date__c, SE_Next_Steps__c, SE_Next_Step_Date__c, Gong_Competitors_Mentioned__c, JSQ_Competitive_With__c, Competition_Justification__c, Champion_WdB__c, Decision_Maker__c, Pain_Need__c, Decision_Process_Justification__c, Decision_Criteria_Justification__c, Legal_Status__c, Fund_Admin_Proposal_Approval_Status__c, Critical_Event__c, Last_Meaningful_Event__c, Last_Meaningful_Event_Date__c FROM Opportunity WHERE Id = '006X'",
+      "contact_roles": {
+        "tool": "getRelatedRecords",
+        "sobject-name": "Opportunity",
+        "id": "006X",
+        "relationship-path": "OpportunityContactRoles",
+        "read_fields": ["Id", "Name", "Title", "Email", "Role", "IsPrimary"]
+      },
+      "tasks": "SELECT Id, Subject, ActivityDate, Status, TaskSubtype FROM Task WHERE WhatId = '006X' ORDER BY ActivityDate DESC LIMIT 25",
+      "history": "SELECT Id, StageName, CloseDate, CreatedDate FROM OpportunityHistory WHERE OpportunityId = '006X' ORDER BY CreatedDate ASC",
+      "prior_account_opps": "SELECT Id, Name, StageName, CloseDate, IsWon, JSQ_Loss_Reason__c, Lost_Reason__c, Primary_Risk_Lost_Reason__c, JSQ_Loss_Notes__c, JSQ_Sales_Stage_When_Lost__c, Competitor_Lost_to_Fund_admin__c FROM Opportunity WHERE AccountId = '001X' AND IsClosed = true ORDER BY CloseDate DESC"
+    },
+    "gmail": {
+      "sent_freshness": "in:sent newer_than:90d",
+      "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d"
+    },
+    "zoom": {
+      "q": "Providence Investments",
+      "from": "2026-05-21",
+      "to": "2026-06-03",
+      "include_zoom_my_notes": true
+    },
+    "internal_evidence": {
+      "mode": "auto",
+      "window_days": 30,
+      "mapping_fields": [],
+      "max_messages": 80,
+      "max_linked_docs": 5,
+      "signals": [
+        "deal_desk_blocker",
+        "legal_blocker",
+        "procurement_blocker",
+        "security_blocker",
+        "product_gap",
+        "exec_alignment",
+        "implementation_risk",
+        "pricing_approval",
+        "competitive_context"
+      ],
+      "broad_search_allowed": false,
+      "slack": {
+        "query_type": "mapped_deal_room",
+        "room": "C123",
+        "read": ["recent_messages", "pinned_items", "bookmarks"],
+        "max_messages": 80,
+        "broad_search_allowed": false
+      },
+      "linked_docs": {
+        "source": "google_drive",
+        "relationship": "linked_from_deal_room",
+        "allowed_sources": ["google_drive"],
+        "max_docs": 5,
+        "allowed_when": ["linked_from_deal_room", "explicit_deal_context"]
+      }
+    }
+  }
+}

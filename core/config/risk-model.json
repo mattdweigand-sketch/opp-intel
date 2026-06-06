@@ -1,0 +1,146 @@
+{
+  "_comment": "Chosen deal-risk framework for the deal-read skill. Edit this file to tune the model; do not recite it in prose. MEDDPICC-derived plus engagement signals. The healthy/at_risk signals are concrete observable cues that keep scoring consistent run-to-run. This is a chosen framework, not a graded predictive model: do NOT add a 'weight' field or anything claiming a dimension predicts loss. Grading dimensions against real win/loss outcomes is a central, pooled, reviewed data product, never something this local per-rep skill does or builds toward. If such a model ever exists it is produced elsewhere and shipped here as updated cues; the deal-read skill only consumes the chosen framework.",
+  "statuses": ["On track", "At risk", "Blocked", "Unknown"],
+  "thresholds": {
+    "email_window_days": 90,
+    "stale_activity_days": 14,
+    "single_thread_max_contacts": 1,
+    "stalled_in_stage_days": 60,
+    "freshness_gap_days": 5,
+    "recent_outbound_days": 3
+  },
+  "legal_status": {
+    "_comment": "Values of Opportunity.Legal_Status__c that count as 'paper not meaningfully started' for the paper_not_started flag. The model weighs the flag against days_to_close for severity (paper not started with a near close date is the loud signal). Edit if your org uses 'NA' to mean 'no legal review required' rather than 'not yet started' — if so, drop it from this list.",
+    "not_started_values": ["NA", "Under Review"]
+  },
+  "call_execution": {
+    "rep_talk_ratio_max": 0.6,
+    "discovery_checklist": [
+      "Economic buyer / who signs identified",
+      "Budget or willingness to spend surfaced",
+      "Decision process and criteria asked about",
+      "Competition / alternatives (incl. do-nothing) raised",
+      "Pain quantified in the buyer's words",
+      "Concrete next step with a date set"
+    ]
+  },
+  "pipeline": {
+    "_comment": "Pipeline-level roll-up controls. 'flag_severity' is a chosen ordering of compute.py's per-deal flags into tiers, used to rank deals by severity of current evidence. It is not a predictive weight.",
+    "scope": {
+      "close_window": "current_quarter",
+      "allowed_close_windows": ["current_quarter", "next_quarter"],
+      "fiscal_year_start_month": 2,
+      "fiscal_year_start_day": 1,
+      "default_window_days": 90
+    },
+    "large_run_threshold": 15,
+    "flag_severity": {
+      "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage"],
+      "amber": ["stale_activity", "email_data_stale"]
+    }
+  },
+  "forecast": {
+    "_comment": "Forecast-mode choices. These are deterministic posture and label options, not predictive weights. rollup.py owns recommendation labels; SKILL.md only explains them.",
+    "postures": ["conservative", "defend_commit", "identify_upside"],
+    "default_posture": "conservative",
+    "recommendation_labels": ["keep", "downgrade", "inspect", "possible_upside"],
+    "movement_labels": ["new", "removed", "amount_changed", "close_date_changed", "risk_changed", "unchanged"],
+    "confidence_labels": ["High", "Medium", "Low"]
+  },
+  "hygiene": {
+    "_comment": "Data-quality lens for /pipeline-hygiene. This remains Salesforce-only and is not deal-risk or win-probability scoring.",
+    "stale_activity_days": 30,
+    "champion_roles": ["Champion", "Decision Maker", "Economic Buyer", "Economic Decision Maker"],
+    "flag_precedence": ["no_contact_roles", "single_threaded", "no_champion", "missing_amount", "missing_next_step", "stale_activity", "overdue_close"],
+    "flags": {
+      "no_contact_roles": "No OpportunityContactRole is logged on the opportunity.",
+      "single_threaded": "Only one contact is logged on the opportunity.",
+      "no_champion": "No logged contact role matches a champion role.",
+      "missing_amount": "The amount/ACV field is blank.",
+      "missing_next_step": "The NextStep field is blank.",
+      "stale_activity": "LastActivityDate is older than stale_activity_days.",
+      "overdue_close": "CloseDate is in the past but the opportunity is still open."
+    }
+  },
+  "internal_evidence": {
+    "_comment": "Read-only internal evidence lane for mapped fund-admin deal rooms. auto uses mapped deal rooms only; force permits bounded fallback lookup. These sources can affect confidence, gaps, risk notes, and next-move wording, never Salesforce-owned opportunity truth or deterministic risk ranking.",
+    "default": "force",
+    "default_by_profile": {
+      "deal": "auto",
+      "pipeline": "force"
+    },
+    "scope": "mapped_deal_room_only",
+    "default_window_days": 30,
+    "max_messages_per_room": 80,
+    "max_linked_docs_per_room": 5,
+    "signals": [
+      "deal_desk_blocker",
+      "legal_blocker",
+      "procurement_blocker",
+      "security_blocker",
+      "product_gap",
+      "exec_alignment",
+      "implementation_risk",
+      "pricing_approval",
+      "competitive_context"
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "champion_multithreading",
+      "name": "Champion & multithreading",
+      "definition": "Is there a champion, and how many contacts are genuinely engaged? Single-threaded is a risk even when the call went well.",
+      "healthy": "Multiple contacts engaged across roles; a named champion sells internally when you're not in the room.",
+      "at_risk": "One contact carries the deal; no one advocates internally; champion has gone quiet or changed roles."
+    },
+    {
+      "id": "next_step",
+      "name": "Next step",
+      "definition": "Is a specific next step defined AND scheduled (date + owner), or vague ('circle back')?",
+      "healthy": "A concrete next action with a date and an owner ('Vanda sends RFP by June 6').",
+      "at_risk": "Vague language with no date ('we'll circle back', 'touch base soon', 'let us regroup internally')."
+    },
+    {
+      "id": "economic_buyer",
+      "name": "Economic buyer",
+      "definition": "Has the rep reached the person who signs, or only a user/influencer?",
+      "healthy": "Direct contact with the person who controls budget and signs; they've engaged on value, not just features.",
+      "at_risk": "Only talking to users/influencers; the signer is unnamed or unreached; champion 'will take it up the chain'."
+    },
+    {
+      "id": "decision_process",
+      "name": "Decision process & criteria",
+      "definition": "Does the rep know how and against what this gets decided, and the steps to signature?",
+      "healthy": "Known evaluation criteria, named approval steps (e.g. RFP, security, procurement), and who owns each.",
+      "at_risk": "Decision process is assumed or unknown; surprise gates appear late; no map from here to signature."
+    },
+    {
+      "id": "pain_value",
+      "name": "Pain & value",
+      "definition": "Is the pain explicit and quantified, or assumed? Is value tied to their numbers?",
+      "healthy": "Buyer states the pain in their own words and it's quantified; ROI tied to their metrics.",
+      "at_risk": "Pain is inferred by the rep, not voiced by the buyer; value is generic, not tied to their numbers."
+    },
+    {
+      "id": "momentum",
+      "name": "Momentum",
+      "definition": "Email latency trend, call cadence, days-since-last-activity vs. days-to-close, slipping close dates, going quiet.",
+      "healthy": "Regular cadence, fast prospect responses, recent activity well inside the close window.",
+      "at_risk": "Lengthening response times, growing gaps, stale activity vs. days-to-close, or a slipped close date."
+    },
+    {
+      "id": "competition",
+      "name": "Competition",
+      "definition": "Known alternative including status quo / 'do nothing'? Is the rep positioned against it?",
+      "healthy": "Alternatives are named (including 'do nothing') and the rep is positioned against each on the buyer's criteria.",
+      "at_risk": "Competitors unknown or unaddressed; a formal RFP/bake-off where incumbents win on 'safe'; no differentiation."
+    },
+    {
+      "id": "paper_timeline",
+      "name": "Paper & timeline",
+      "definition": "Is the close date realistic given remaining steps (legal, security, procurement)?",
+      "healthy": "Close date is backed by the remaining steps and their durations; paper process is in motion.",
+      "at_risk": "Close date can't survive the remaining steps; legal/security/procurement not started; forecast contradicts the date."
+    }
+  ]
+}
