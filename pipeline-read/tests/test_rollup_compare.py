@@ -32,7 +32,7 @@ def deal(name, oid, amount, close_date, flags):
     out = {
         "name": name,
         "stage": "Negotiation",
-        "acv": amount,
+        "Added_ARR__c": amount,
         "close_date": close_date,
         "forecast_category": "Commit",
         "analyze_output": {"deal_metrics": {"days_to_close": 10, "flags": base}},

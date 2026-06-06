@@ -41,7 +41,7 @@ def main():
         "deals": [
             {
                 "name": "Acme",
-                "acv": 100000,
+                "Added_ARR__c": 100000,
                 "analyze_output": {
                     "deal_metrics": {
                         "days_to_close": 10,

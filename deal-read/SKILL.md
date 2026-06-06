@@ -209,7 +209,7 @@ Conversational, direct, second person ("you"), coaching tone — not a report du
 writing-style skill for voice. Structure:
 
 ```
-Deal: <Name> — <Stage>, <Amount/ACV>, closes <date> (<N> days out, <age> old)
+Deal: <Name> — <Stage>, Added ARR <Added_ARR__c>, closes <date> (<N> days out, <age> old)
 
 Confidence: <High / Medium / Low> — <one clause on what it rests on, e.g. "Low: one call, no email
 thread, and email data flagged stale.">

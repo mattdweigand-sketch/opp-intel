@@ -74,7 +74,8 @@ def main():
     ok &= check("pipeline: numeric window keeps legacy no-lower-bound behavior", "CloseDate >=" not in q)
     ok &= check("pipeline: ordered by CloseDate ASC", "ORDER BY CloseDate ASC" in q)
     ok &= check("pipeline: account name relationship field selected", "Account.Name" in q)
-    ok &= check("pipeline: uses real ACV field, no bare Amount", "Calculated_ACV__c" in q and ", Amount," not in q)
+    ok &= check("pipeline: uses Added_ARR__c, no unreliable amount fields",
+                "Added_ARR__c" in q and "Calculated_ACV__c" not in q and "Amount__c" not in q and ", Amount," not in q)
     ok &= check("pipeline: 30d window end is 2026-07-04", p2["window"]["close_on_or_before"] == "2026-07-04")
 
     # --- Forecast portfolio phase: selected amount basis, category, posture, and internal controls.
@@ -110,14 +111,18 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    ok &= check("per-deal: opp query uses Calculated_ACV__c", "Calculated_ACV__c" in opp)
+    ok &= check("per-deal: opp query uses Added_ARR__c", "Added_ARR__c" in opp)
+    ok &= check("per-deal: opp query omits unreliable amount fields",
+                "Calculated_ACV__c" not in opp and "Amount__c" not in opp)
     ok &= check("per-deal: no bare Amount field", ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("per-deal: gmail thread cap uses pipeline depth", full["gmail"]["max_threads"] == 3)
     ok &= check("per-deal: gmail freshness rule mandates get_thread over snippet",
                 "get_thread" in full["gmail"].get("_freshness_rule", "")
-                and "snippet" in full["gmail"]["_freshness_rule"])
+                and "snippet" in full["gmail"]["_freshness_rule"]
+                and "max_threads=3" in full["gmail"]["_freshness_rule"])
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")

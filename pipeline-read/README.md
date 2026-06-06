@@ -156,7 +156,7 @@ Shape:
     "run_date": "...",
     "mode": "read|forecast|hygiene",
     "posture": "conservative|defend_commit|identify_upside",
-    "amount_basis": "acv|crm_primary_amount",
+    "amount_basis": "acv",
     "internal_evidence": "auto|off|force"
   },
   "portfolio": {},

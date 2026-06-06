@@ -56,6 +56,8 @@ def main():
     ok &= check("amount: default is acv", amount["default"] == "acv")
     ok &= check("amount: acv maps to Added_ARR__c",
                 amount["fields"]["acv"] == "Added_ARR__c")
+    ok &= check("amount: Added ARR is the only supported amount basis",
+                amount["fields"] == {"acv": "Added_ARR__c"})
     ok &= check("amount: every basis maps to a configured SF field",
                 all(field in allowed for field in amount["fields"].values()))
     ok &= check("amount: bare Amount is not default",

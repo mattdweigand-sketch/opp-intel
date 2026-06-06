@@ -11,7 +11,7 @@
   },
   "output": {
     "salesforce": {
-      "pipeline": "SELECT Id, Name, StageName, CloseDate, Added_ARR__c, Calculated_ACV__c, Amount__c, AccountId, OwnerId, LastActivityDate, ForecastCategoryName, NextStep, Account.Name FROM Opportunity WHERE OwnerId = '005XX' AND IsClosed = false AND CloseDate >= 2026-05-01 AND CloseDate <= 2026-07-31 ORDER BY CloseDate ASC"
+      "pipeline": "SELECT Id, Name, StageName, CloseDate, Added_ARR__c, AccountId, OwnerId, LastActivityDate, ForecastCategoryName, NextStep, Account.Name FROM Opportunity WHERE OwnerId = '005XX' AND IsClosed = false AND CloseDate >= 2026-05-01 AND CloseDate <= 2026-07-31 ORDER BY CloseDate ASC"
     },
     "window": {
       "today": "2026-06-04",

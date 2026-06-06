@@ -12,7 +12,7 @@
       {
         "name": "Providence",
         "stage": "X",
-        "acv": 120000,
+        "Added_ARR__c": 120000,
         "close_date": "2026-06-30",
         "forecast_category": "Commit",
         "analyze_output": {
@@ -32,7 +32,7 @@
       {
         "name": "Acme",
         "stage": "X",
-        "acv": 80000,
+        "Added_ARR__c": 80000,
         "close_date": "2026-06-30",
         "forecast_category": "Best Case",
         "analyze_output": {

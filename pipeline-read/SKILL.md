@@ -40,7 +40,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
 - `--next-quarter`
 - `--window current_quarter|next_quarter|30d`
 - `--posture conservative|defend-commit|identify-upside`
-- `--amount-basis acv|crm-primary-amount`
+- `--amount-basis acv`
 - `--compare <prior-computed-inputs.json>`
 - `--internal auto|off|force`
 - `--internal-window 30d`
@@ -182,13 +182,17 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    (this is the rule `plan.py` emits as `gmail._freshness_rule`).** `search_threads` returns a thread
    when *any* of its messages matches, but the snippet it shows is frequently the *oldest* message in
    that thread. Firms reuse one subject line (e.g. "<Company> - Next Steps") for the entire relationship,
-   so a deal's newest inbound can be the last message of a thread whose snippet shows month-old mail. For
-   **every** thread `thread_search` returns, call `get_thread` and read its full message list; compute the
-   deal's `newest_email`, `last_inbound`, and `last_outbound` from the **max message date across the
-   expanded threads**, not from the snippet. Never discard a thread because its visible snippet predates
-   the window — it was returned because it holds an in-window message; expand it. Asserting
-   `email_data_stale` (or "went quiet") off a stale snippet date, while a fresh reply sits deeper in the
-   same thread, is the exact regression this rule prevents.
+   so a deal's newest inbound can be the last message of a thread whose snippet shows month-old mail.
+   Expand only the capped set from `gmail.max_threads` in the plan output (3 for pipeline reads). If
+   result metadata exposes latest thread dates, use the newest capped set; otherwise use the first
+   `max_threads` returned by the connector. For **every** thread in that capped set, call `get_thread`
+   and read its full message list; compute the deal's `newest_email`, `last_inbound`, and
+   `last_outbound` from the **max message date across the expanded threads**, not from the snippet.
+   Never discard a thread in the capped set because its visible snippet predates the window — it was
+   returned because it holds an in-window message; expand it. Do not expand beyond `max_threads`; for
+   deeper email history, hand the deal to `/deal-read`. Asserting `email_data_stale` (or "went quiet")
+   off a stale snippet date, while a fresh reply sits deeper in the same thread, is the exact regression
+   this rule prevents.
 3. Save raw connector payloads to per-deal files and run
    `python3 <skill-dir>/scripts/pipeline_reduce.py < gather.json`. The reducer accepts saved
    `email_threads_file`, `calendar_evidence_file`, `zoom_meetings_file`, and `internal_evidence_file`
@@ -242,8 +246,9 @@ requirements bind every per-deal subagent:
 > **Claude Code execution (the Claude-Code-specific way to satisfy the contract above).** Run each in-
 > scope deal as its own subagent via the `Agent` tool, **on every run** — launch them concurrently (one
 > message, multiple `Agent` calls) so the deals gather in parallel and each deal's raw payload lands in
-> that subagent's throwaway context, not the orchestrator's. Give each subagent a **narrow** prompt: the
-> deal-context dict, "follow SKILL.md §2–3 steps 1–4, metadata only," and the return contract — "reply
+> that subagent's throwaway context, not the orchestrator's. Pass `model: "haiku"` to each `Agent` call.
+> Give each subagent a **narrow** prompt: the deal-context dict, "follow SKILL.md §2–3 steps 1–4,
+> metadata only," and the return contract — "reply
 > with **only** this deal's `analyze.py` JSON output plus `pipeline_reduce.py`'s `evidence_summary`; do
 > not include quotes, raw transcripts, or email bodies." The orchestrator collects the compact replies and runs `rollup.py` once
 > over them (§4). This is execution mechanism, not policy: the contract above is what binds, and a raw-
@@ -286,7 +291,7 @@ Assemble the roll-up bundle and run it once:
   "rep_name": "<rep>",
   "mode": "read|forecast|hygiene",
   "posture": "conservative|defend_commit|identify_upside",
-  "amount_basis": "acv|crm_primary_amount",
+  "amount_basis": "acv",
   "internal": "auto|off|force",
   "window": { ...the window block plan.py returned... },
   "prior_rollup": { ...prior Computed inputs JSON... },
@@ -295,8 +300,7 @@ Assemble the roll-up bundle and run it once:
       "opportunity_id",
       "name",
       "stage",
-      "acv",
-      "amount",
+      "Added_ARR__c",
       "forecast_category",
       "close_date",
       "internal_evidence",
@@ -306,10 +310,10 @@ Assemble the roll-up bundle and run it once:
   ]
 }
 ```
-The `name`, `stage`, `acv`, and `close_date` come straight from the §1 portfolio list the orchestrator
+The `name`, `stage`, `Added_ARR__c`, and `close_date` come straight from the §1 portfolio list the orchestrator
 already holds — the per-deal step only owes you `analyze_output` plus `evidence_summary` metadata, so a
-subagent need not echo the deal facts back. For `acv`, pass the deal's real ACV from the opp record (the
-`Added_ARR__c` you queried). For forecast mode, also pass the configured amount field and forecast
+subagent need not echo the deal facts back. For ARR, pass only `Added_ARR__c`; do not pass or derive from
+`Calculated_ACV__c`, `Amount__c`, generic `amount`, or generic `acv`. For forecast mode, also pass the forecast
 category from the same Salesforce portfolio row. If the user supplied `--compare`, load that file as
 JSON and pass the parsed object as `prior_rollup` (or a path as `compare_file`). It must be a prior
 Computed inputs object, not a prose brief. `rollup.py`

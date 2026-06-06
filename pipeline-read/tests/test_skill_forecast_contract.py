@@ -20,7 +20,7 @@ def main():
         "--posture conservative|defend-commit|identify-upside",
         "--next-quarter",
         "--window current_quarter|next_quarter|30d",
-        "--amount-basis acv|crm-primary-amount",
+        "--amount-basis acv",
         "--compare <prior-computed-inputs.json>",
         "--internal auto|off|force",
         "Slack",

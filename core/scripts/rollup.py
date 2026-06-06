@@ -151,19 +151,10 @@ def category_group(value, convention):
 
 
 def amount_for_basis(deal, amount_basis, amount_field):
-    # Honor the requested basis before falling back to the raw CRM amount. The
-    # config-mapped field for the basis wins (e.g. Added_ARR__c for acv, Amount__c for
-    # crm_primary_amount); deal.get(amount_basis) catches the orchestrator's "acv" key;
-    # deal.get("amount") is the last-resort fallback only. Listing "amount" first here
-    # silently reported CRM amount on every --amount-basis acv run.
-    return money_value(first_present(
-        field_value(deal, amount_field),
-        deal.get(amount_basis),
-        deal.get("amount"),
-        deal.get("acv"),
-        deal.get("Added_ARR__c"),
-        deal.get("Calculated_ACV__c"),
-    ))
+    # Added_ARR__c is the only reliable ARR source in this org. Do not fall back
+    # to aliases or alternate Salesforce amount fields; a missing value is a
+    # missing_amount signal, not permission to use a different basis.
+    return money_value(field_value(deal, amount_field))
 
 
 def internal_for_deal(deal):
@@ -201,7 +192,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
     for deal in deals:
         dominant, tier, true_flags = classify(deal, severity)
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = money_value(first_present(deal.get("acv"), deal.get("Added_ARR__c"), deal.get("Calculated_ACV__c"), amount))
+        acv = amount
         category = category_value(deal, category_field)
         group = category_group(category, convention)
         last_touch, last_touch_source = last_touch_for(deal)
@@ -343,7 +334,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
     for deal in deals:
         flags = dict(deal_flags(deal))
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = money_value(first_present(deal.get("acv"), deal.get("Added_ARR__c"), deal.get("Calculated_ACV__c"), amount))
+        acv = amount
         if "missing_amount" in precedence:
             flags["missing_amount"] = amount is None
         metrics = (deal.get("analyze_output") or {}).get("deal_metrics", {})

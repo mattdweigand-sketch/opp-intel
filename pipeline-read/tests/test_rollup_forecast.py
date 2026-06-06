@@ -16,6 +16,11 @@ def run(bundle):
     return json.loads(p.stdout)
 
 
+def run_fail(bundle):
+    return subprocess.run([sys.executable, ROLLUP], input=json.dumps(bundle),
+                          capture_output=True, text=True)
+
+
 def check(name, cond):
     print(("PASS" if cond else "FAIL"), name)
     return cond
@@ -29,7 +34,7 @@ def deal(name, oid, amount, category, flags, internal=None):
         "name": name,
         "opportunity_id": oid,
         "stage": "Negotiation",
-        "acv": amount,
+        "Added_ARR__c": amount,
         "close_date": "2026-06-30",
         "forecast_category": category,
         "internal_evidence": internal,
@@ -114,30 +119,30 @@ def main():
     ok &= check("forecast gaps: calendar gap reaches top-level source_gaps",
                 "calendar_unavailable" in calendar_gap_run["source_gaps"])
 
-    # Regression: category_rollup must honor amount_basis, not silently sum CRM amount.
-    # Each deal carries a distinct acv and a larger CRM amount; the rollup total must
-    # follow the requested basis. (Previously amount_for_basis returned deal["amount"]
-    # first, so an --amount-basis acv run reported CRM-amount totals.)
+    # Regression: category_rollup must use Added_ARR__c only. Aliases and alternate
+    # CRM amount fields are intentionally present with wrong values and must be ignored.
     basis_deals = [
         {"name": "Big CRM Small ACV", "opportunity_id": "006E", "stage": "Negotiation",
-         "acv": 18000, "amount": 120000, "close_date": "2026-06-30", "forecast_category": "Commit",
+         "Added_ARR__c": 18000, "acv": 999999, "amount": 120000, "Amount__c": 120000,
+         "Calculated_ACV__c": 777777, "close_date": "2026-06-30", "forecast_category": "Commit",
          "analyze_output": {"deal_metrics": {"days_to_close": 25, "flags": {}}}},
         {"name": "Small Both", "opportunity_id": "006F", "stage": "Negotiation",
-         "acv": 3750, "amount": 25000, "close_date": "2026-06-30", "forecast_category": "Commit",
+         "Added_ARR__c": 3750, "acv": 888888, "amount": 25000, "Amount__c": 25000,
+         "Calculated_ACV__c": 666666, "close_date": "2026-06-30", "forecast_category": "Commit",
          "analyze_output": {"deal_metrics": {"days_to_close": 25, "flags": {}}}},
     ]
     acv_run = run({"mode": "forecast", "amount_basis": "acv", "internal": "off",
                    "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
                    "deals": basis_deals})
-    ok &= check("basis acv: category rollup sums ACV not CRM amount",
+    ok &= check("basis acv: category rollup sums Added_ARR__c only",
                 acv_run["forecast"]["category_rollup"]["commit"]["amount"] == 21750)
     ok &= check("basis acv: portfolio and category totals agree",
                 acv_run["portfolio"]["total_acv"] == acv_run["forecast"]["category_rollup"]["commit"]["amount"])
-    crm_run = run({"mode": "forecast", "amount_basis": "crm_primary_amount", "internal": "off",
-                   "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
-                   "deals": basis_deals})
-    ok &= check("basis crm_primary_amount: category rollup sums CRM amount",
-                crm_run["forecast"]["category_rollup"]["commit"]["amount"] == 145000)
+    bad_basis = run_fail({"mode": "forecast", "amount_basis": "crm_primary_amount", "internal": "off",
+                          "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
+                          "deals": basis_deals})
+    ok &= check("basis crm_primary_amount: rejected as unreliable",
+                bad_basis.returncode != 0 and "unknown amount_basis" in bad_basis.stderr)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
