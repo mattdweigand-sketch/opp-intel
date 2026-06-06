@@ -55,7 +55,7 @@ Use it when the question is about many deals:
 
 ```text
 core/
-├── adapters/      # Salesforce, Gmail, calls, Slack, and Drive boundaries
+├── adapters/      # Salesforce, Gmail, Calendar, calls, Slack, and Drive boundaries
 ├── config/        # risk model, Salesforce fields, depth profiles, source contracts
 ├── schemas/       # evidence bundle, analyzed deal, and rollup contracts
 ├── scripts/       # plan, analyze, compute, callstats, and rollup entrypoints
