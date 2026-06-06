@@ -171,6 +171,18 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    task logs. For Zoom, use `meeting_summary` and the attendee list only (never `get_meeting_assets` /
    transcript bodies). Do **not** read Zoom transcripts to produce the read; that belongs in
    `/deal-read`.
+
+   **The snippet trap — derive email freshness from `get_thread`, never from the search snippet
+   (this is the rule `plan.py` emits as `gmail._freshness_rule`).** `search_threads` returns a thread
+   when *any* of its messages matches, but the snippet it shows is frequently the *oldest* message in
+   that thread. Firms reuse one subject line (e.g. "<Company> - Next Steps") for the entire relationship,
+   so a deal's newest inbound can be the last message of a thread whose snippet shows month-old mail. For
+   **every** thread `thread_search` returns, call `get_thread` and read its full message list; compute the
+   deal's `newest_email`, `last_inbound`, and `last_outbound` from the **max message date across the
+   expanded threads**, not from the snippet. Never discard a thread because its visible snippet predates
+   the window — it was returned because it holds an in-window message; expand it. Asserting
+   `email_data_stale` (or "went quiet") off a stale snippet date, while a fresh reply sits deeper in the
+   same thread, is the exact regression this rule prevents.
 3. Build the per-deal bundle and run
    `python3 <skill-dir>/scripts/analyze.py < bundle.json` once per deal. For `compute_input`, pass
    `observed_participants` and `logged_contact_roles` (not a pre-counted contact total),

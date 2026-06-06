@@ -39,6 +39,7 @@
     "gmail": {
       "sent_freshness": "in:sent newer_than:90d",
       "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d",
+      "_freshness_rule": "MANDATORY: for every thread thread_search returns, call get_thread and read its FULL message list. Compute this deal's email freshness (newest inbound, newest outbound, last_inbound/outbound dates) from the MAX message date across the expanded threads \u2014 NOT from the search-result snippet, which often shows the oldest messages of a long reused-subject thread. A thread returned by a newer_than: query contains an in-window message even when its snippet looks old: expand it, do not drop it. Setting email_data_stale off a snippet date is the exact failure this rule prevents.",
       "workflow_signals": "from:(ironcladapp.com OR lexion.ai OR gong.io OR scratchpad.com) (\"Providence Investments\") newer_than:90d",
       "_workflow_note": "Read these workflow-tool notifications and map each sender domain to its signal_type via internal_evidence.workflow_tools in risk-model.json (e.g. ironcladapp.com -> clm_stage). Emit each as an internal_evidence signal with a source_ref (the message id/link). Internal-evidence lane only: these inform confidence, source gaps, risk notes, and next-move wording, never Salesforce-owned truth, ranking, or flag_severity."
     },

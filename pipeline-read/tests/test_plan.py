@@ -115,6 +115,9 @@ def main():
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("per-deal: gmail freshness rule mandates get_thread over snippet",
+                "get_thread" in full["gmail"].get("_freshness_rule", "")
+                and "snippet" in full["gmail"]["_freshness_rule"])
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")

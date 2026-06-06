@@ -425,11 +425,30 @@ def deal_plan(ctx, profile="pipeline"):
     if emails:
         ors = " OR ".join(emails)
         gmail["thread_search"] = f"from:({ors}) OR to:({ors}) newer_than:{window}d"
+
+    # Snippet trap (NW1 regression): search_threads returns a thread when ANY message
+    # matches, but the snippet/messages it shows are frequently the OLDEST in that thread.
+    # Firms reuse one subject ("<Company> - Next Steps") for months, so the live deal's
+    # newest inbound can be message N of a thread whose snippet shows month-old mail. Never
+    # judge email recency from the search snippet, and never discard a returned thread
+    # because its visible snippet predates the window — it matched because it holds an
+    # in-window message. This rule is emitted to every per-deal gather.
+    gmail["_freshness_rule"] = (
+        "MANDATORY: for every thread thread_search returns, call get_thread and read its "
+        "FULL message list. Compute this deal's email freshness (newest inbound, newest "
+        "outbound, last_inbound/outbound dates) from the MAX message date across the "
+        "expanded threads — NOT from the search-result snippet, which often shows the "
+        "oldest messages of a long reused-subject thread. A thread returned by a "
+        "newer_than: query contains an in-window message even when its snippet looks old: "
+        "expand it, do not drop it. Setting email_data_stale off a snippet date is the "
+        "exact failure this rule prevents."
+    )
     if profile == "pipeline":
         gmail["_note"] = (
             "After running account_contacts and contact_roles, union all non-null Email values "
             "and re-run thread_search: from:(<emails>) OR to:(<emails>) newer_than:{window}d. "
-            "Read full thread bodies, not metadata only."
+            "Then get_thread every returned thread and read full bodies — see _freshness_rule: "
+            "derive freshness from the expanded message list, never the snippet."
         ).replace("{window}", str(window))
 
     # Workflow-tool inbox sweep: internal SaaS notifications (CLM, NDA/legal, call intel,
