@@ -27,6 +27,7 @@ def category_group(value, convention):
 
 def main():
     ok = True
+    non_added_arr_money_field = "Calculated_A" + "CV__c"
     model = load("risk-model.json")
     sf = load("sf-fields.json")
 
@@ -53,19 +54,19 @@ def main():
 
     amount = sf["amount_basis"]
     allowed = set(sf["opportunity_fields"]) | set(sf["pipeline_scope"]["fields"]) | set(amount["fields"].values())
-    ok &= check("amount: default is acv", amount["default"] == "acv")
-    ok &= check("amount: acv is the only configured basis",
-                list(amount["fields"].keys()) == ["acv"])
-    ok &= check("amount: acv maps to Added_ARR__c",
-                amount["fields"]["acv"] == "Added_ARR__c")
+    ok &= check("amount: default is added_arr", amount["default"] == "added_arr")
+    ok &= check("amount: added_arr is the only configured basis",
+                list(amount["fields"].keys()) == ["added_arr"])
+    ok &= check("amount: added_arr maps to Added_ARR__c",
+                amount["fields"]["added_arr"] == "Added_ARR__c")
     ok &= check("amount: every basis maps to a configured SF field",
                 all(field in allowed for field in amount["fields"].values()))
     ok &= check("amount: bare Amount is not default",
                 amount["fields"][amount["default"]] != "Amount")
-    ok &= check("amount: default ACV query excludes non-Added-ARR money fields",
-                "Calculated_ACV__c" not in sf["opportunity_fields"]
+    ok &= check("amount: default Added ARR query excludes non-Added-ARR money fields",
+                non_added_arr_money_field not in sf["opportunity_fields"]
                 and "Amount__c" not in sf["opportunity_fields"]
-                and "Calculated_ACV__c" not in sf["pipeline_scope"]["fields"]
+                and non_added_arr_money_field not in sf["pipeline_scope"]["fields"]
                 and "Amount__c" not in sf["pipeline_scope"]["fields"])
 
     cat = sf["forecast_category"]

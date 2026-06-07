@@ -27,7 +27,7 @@ def computed(gaps=False, include_forecast=True, signal_ref=True):
             "rep_name": "Matthew Weigand",
             "mode": "forecast",
             "posture": "conservative",
-            "amount_basis": "acv",
+            "amount_basis": "added_arr",
             "internal_evidence": "auto",
         },
         "portfolio": {"deal_count": 1, "stale_data_deals": 0},
@@ -51,7 +51,7 @@ def computed(gaps=False, include_forecast=True, signal_ref=True):
     }
     if include_forecast:
         obj["forecast"] = {
-            "amount_basis": "acv",
+            "amount_basis": "added_arr",
             "posture": "conservative",
             "category_rollup": {
                 "commit": {"count": 1, "amount": 100000, "amount_at_risk": 0},
@@ -83,7 +83,7 @@ def brief(obj, confidence="High", include_gap_section=True, omit_heading=None):
     sections = [
         f"Forecast Read - Matthew Weigand, 1 deals closing by 2026-06-30. Run 2026-06-05.\n",
         f"Confidence: {confidence} - current read.\n",
-        "Review scope: Salesforce, Gmail, Calendar, Zoom, amount basis acv, posture conservative.\n",
+        "Review scope: Salesforce, Gmail, Calendar, Zoom, amount basis added_arr, posture conservative.\n",
         "Internal evidence: auto; Slack room found for Acme.\n",
         "Category rollup: Commit 1, $100000, $0 at risk.\n",
         "Key movements: Movement was not evaluated.\n",

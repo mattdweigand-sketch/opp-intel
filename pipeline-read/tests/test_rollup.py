@@ -21,11 +21,11 @@ def check(name, cond):
     return cond
 
 
-def deal(name, acv, dtc, flags):
+def deal(name, added_arr, dtc, flags):
     base = {"single_threaded": False, "stale_activity": False, "overdue_close": False,
             "close_date_slipped": False, "stalled_in_stage": False, "email_data_stale": False}
     base.update(flags)
-    return {"name": name, "stage": "X", "Added_ARR__c": acv, "close_date": "2026-06-30",
+    return {"name": name, "stage": "X", "Added_ARR__c": added_arr, "close_date": "2026-06-30",
             "analyze_output": {"deal_metrics": {"days_to_close": dtc, "flags": base}}}
 
 
@@ -48,20 +48,20 @@ def main():
     ok &= check("ranking: clean deal tier is none", out["ranking"][-1]["severity_tier"] == "none")
 
     p = out["portfolio"]
-    ok &= check("portfolio: total ACV summed", p["total_acv"] == 250000)
-    ok &= check("portfolio: ACV at risk = red deals only", p["acv_at_risk"] == 200000)
-    ok &= check("portfolio: at-risk pct", p["acv_at_risk_pct"] == 0.8)
+    ok &= check("portfolio: total Added ARR summed", p["total_added_arr"] == 250000)
+    ok &= check("portfolio: Added ARR at risk = red deals only", p["added_arr_at_risk"] == 200000)
+    ok &= check("portfolio: at-risk pct", p["added_arr_at_risk_pct"] == 0.8)
     ok &= check("portfolio: deals_at_risk counts red tier", p["deals_at_risk"] == 2)
     ok &= check("portfolio: single_threaded count", p["single_threaded"] == 1)
     ok &= check("portfolio: slipped_or_overdue counts a deal once", p["slipped_or_overdue"] == 1)
     ok &= check("portfolio: stale_data_deals count", p["stale_data_deals"] == 1)
 
-    # Tie-break: same tier + flag count -> larger ACV ranks first.
+    # Tie-break: same tier + flag count -> larger Added ARR ranks first.
     tie = run({"deals": [
         deal("Small", 10000, 5, {"single_threaded": True}),
         deal("Big", 90000, 5, {"single_threaded": True}),
     ]})
-    ok &= check("tie-break: larger ACV first", [r["name"] for r in tie["ranking"]] == ["Big", "Small"])
+    ok &= check("tie-break: larger Added ARR first", [r["name"] for r in tie["ranking"]] == ["Big", "Small"])
 
     # Non-risk flags (e.g. recent_rep_outbound) never count toward severity.
     nr = run({"deals": [deal("Quiet", 5000, 10, {})]})
@@ -82,12 +82,12 @@ def main():
 
     # Empty pipeline doesn't divide by zero.
     empty = run({"deals": []})
-    ok &= check("empty: pct is None, no crash", empty["portfolio"]["acv_at_risk_pct"] is None)
+    ok &= check("empty: pct is None, no crash", empty["portfolio"]["added_arr_at_risk_pct"] is None)
 
     # Coverage gaps: aggregate into top-level source_gaps + portfolio.coverage_gap_deals,
     # carry last_touch/last_touch_source on rows, and never reorder the ranking.
-    def gap_deal(name, acv, dtc, flags, coverage_gaps=None, anchor=None, anchor_src=None):
-        d = deal(name, acv, dtc, flags)
+    def gap_deal(name, added_arr, dtc, flags, coverage_gaps=None, anchor=None, anchor_src=None):
+        d = deal(name, added_arr, dtc, flags)
         m = d["analyze_output"]["deal_metrics"]
         if coverage_gaps is not None:
             m["coverage_gaps"] = coverage_gaps
@@ -153,11 +153,11 @@ def main():
 
     # Mode contract: an explicit read bundle stays read and emits no forecast block,
     # even when amount_basis is present. (amount_basis must not infer forecast.)
-    read_mode = run({"mode": "read", "amount_basis": "acv",
+    read_mode = run({"mode": "read", "amount_basis": "added_arr",
                      "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
     ok &= check("mode: explicit read stays read", read_mode["run"]["mode"] == "read")
     ok &= check("mode: read emits no forecast block", "forecast" not in read_mode)
-    legacy_mode = run({"mode": "triage", "amount_basis": "acv",
+    legacy_mode = run({"mode": "triage", "amount_basis": "added_arr",
                        "deals": [deal("Solo", 10000, 5, {"single_threaded": True})]})
     ok &= check("mode: legacy triage input normalizes to read", legacy_mode["run"]["mode"] == "read")
     # And mode "forecast" still produces the forecast block.

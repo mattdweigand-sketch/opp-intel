@@ -8,7 +8,7 @@ amounts in its head.
 
 Ranking is by severity of current evidence, not a predictive model: a deal with a
 red flag (from risk-model.json pipeline.flag_severity) outranks one with only amber
-flags; ties break on flag count, then Added ARR ACV, then days-to-close. Forecast labels
+flags; ties break on flag count, then Added ARR, then days-to-close. Forecast labels
 and movement are deterministic output from this script.
 
 Usage: python3 rollup.py        # reads the bundle JSON on stdin
@@ -165,13 +165,13 @@ def category_group(value, convention):
     return "unknown"
 
 
-def added_arr_acv_for_deal(deal):
+def added_arr_for_deal(deal):
     return money_value(field_value(deal, ADDED_ARR_FIELD))
 
 
 def amount_for_basis(deal, amount_basis, amount_field):
-    if amount_basis == "acv":
-        return added_arr_acv_for_deal(deal)
+    if amount_basis == "added_arr":
+        return added_arr_for_deal(deal)
 
     raise ValueError(f"unknown amount_basis: {amount_basis}")
 
@@ -211,7 +211,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
     for deal in deals:
         dominant, tier, true_flags = classify(deal, severity)
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = added_arr_acv_for_deal(deal)
+        added_arr = added_arr_for_deal(deal)
         category = category_value(deal, category_field)
         group = category_group(category, convention)
         last_touch, last_touch_source = last_touch_for(deal)
@@ -219,7 +219,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
             "opportunity_id": stable_id(deal),
             "name": first_present(deal.get("name"), deal.get("Name")),
             "stage": first_present(deal.get("stage"), deal.get("StageName")),
-            "acv": acv,
+            "added_arr": added_arr,
             "amount": amount,
             "amount_basis": amount_basis,
             "forecast_category": category,
@@ -245,7 +245,7 @@ def sort_ranking(rows):
         key=lambda r: (
             TIER_RANK[r["severity_tier"]],
             -r["flag_count"],
-            -amount_or_zero(r["amount"] if r.get("amount") is not None else r.get("acv")),
+            -amount_or_zero(r["amount"] if r.get("amount") is not None else r.get("added_arr")),
             r["days_to_close"] if r["days_to_close"] is not None else big,
         ),
     )
@@ -270,9 +270,9 @@ def aggregate_coverage_gaps(deals):
 
 
 def portfolio_for(deals, rows):
-    total_acv = sum(amount_or_zero(r.get("acv")) for r in rows)
+    total_added_arr = sum(amount_or_zero(r.get("added_arr")) for r in rows)
     at_risk_rows = [r for r in rows if r["severity_tier"] == "red"]
-    acv_at_risk = sum(amount_or_zero(r.get("acv")) for r in at_risk_rows)
+    added_arr_at_risk = sum(amount_or_zero(r.get("added_arr")) for r in at_risk_rows)
 
     by_dominant = {}
     for r in rows:
@@ -284,9 +284,9 @@ def portfolio_for(deals, rows):
 
     return {
         "deal_count": len(deals),
-        "total_acv": total_acv,
-        "acv_at_risk": acv_at_risk,
-        "acv_at_risk_pct": round(acv_at_risk / total_acv, 2) if total_acv else None,
+        "total_added_arr": total_added_arr,
+        "added_arr_at_risk": added_arr_at_risk,
+        "added_arr_at_risk_pct": round(added_arr_at_risk / total_added_arr, 2) if total_added_arr else None,
         "deals_at_risk": len(at_risk_rows),
         "by_dominant_flag": by_dominant,
         "single_threaded": count(lambda f: f.get("single_threaded")),
@@ -310,7 +310,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
     for deal in deals:
         flags = dict(deal_flags(deal))
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = added_arr_acv_for_deal(deal)
+        added_arr = added_arr_for_deal(deal)
         if "missing_amount" in precedence:
             flags["missing_amount"] = amount is None
         metrics = (deal.get("analyze_output") or {}).get("deal_metrics", {})
@@ -320,7 +320,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
             "opportunity_id": stable_id(deal),
             "name": first_present(deal.get("name"), deal.get("Name")),
             "stage": first_present(deal.get("stage"), deal.get("StageName")),
-            "acv": acv,
+            "added_arr": added_arr,
             "amount": amount,
             "amount_basis": amount_basis,
             "close_date": first_present(deal.get("close_date"), deal.get("CloseDate")),
@@ -338,7 +338,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
 
 
 def sort_hygiene(rows, precedence):
-    """Rank by dominant-flag precedence (clean last), then flag count, Added ARR ACV, days-to-close."""
+    """Rank by dominant-flag precedence (clean last), then flag count, Added ARR, days-to-close."""
     rank = {f: i for i, f in enumerate(precedence)}
     big = float("inf")
     return sorted(
@@ -346,7 +346,7 @@ def sort_hygiene(rows, precedence):
         key=lambda r: (
             rank.get(r["dominant_flag"], big),
             -r["flag_count"],
-            -amount_or_zero(r["amount"] if r.get("amount") is not None else r.get("acv")),
+            -amount_or_zero(r["amount"] if r.get("amount") is not None else r.get("added_arr")),
             r["days_to_close"] if r["days_to_close"] is not None else big,
         ),
     )
@@ -359,10 +359,10 @@ def hygiene_portfolio(rows, precedence):
         key = r["dominant_flag"] or "clean"
         distribution[key] = distribution.get(key, 0) + 1
     flagged = sum(1 for r in rows if r["dominant_flag"])
-    total_acv = sum(amount_or_zero(r.get("acv")) for r in rows)
+    total_added_arr = sum(amount_or_zero(r.get("added_arr")) for r in rows)
     return {
         "deal_count": len(rows),
-        "total_acv": total_acv,
+        "total_added_arr": total_added_arr,
         "flagged_deals": flagged,
         "clean_deals": len(rows) - flagged,
         "distribution": distribution,
@@ -503,7 +503,7 @@ def compact_row(row):
     return {
         "opportunity_id": row.get("opportunity_id"),
         "name": row.get("name") or row.get("deal"),
-        "amount": first_present(row.get("amount"), row.get("acv")),
+        "amount": first_present(row.get("amount"), row.get("added_arr")),
         "close_date": row.get("close_date"),
         "severity_tier": row.get("severity_tier"),
         "risk_flags": row.get("risk_flags") or [],
@@ -522,8 +522,8 @@ def match_key(row):
 
 def movement_labels(previous, current):
     labels = []
-    prev_amount = money_value(first_present(previous.get("amount"), previous.get("acv")))
-    curr_amount = money_value(first_present(current.get("amount"), current.get("acv")))
+    prev_amount = money_value(first_present(previous.get("amount"), previous.get("added_arr")))
+    curr_amount = money_value(first_present(current.get("amount"), current.get("added_arr")))
     if prev_amount != curr_amount:
         labels.append("amount_changed")
     if previous.get("close_date") != current.get("close_date"):
@@ -680,7 +680,7 @@ def main():
         severity = model.get("pipeline", {}).get("flag_severity", {})
 
         posture = normalize_token(bundle.get("posture") or forecast_cfg.get("default_posture", "conservative"))
-        amount_basis = normalize_token(bundle.get("amount_basis") or amount_cfg.get("default", "acv"))
+        amount_basis = normalize_token(bundle.get("amount_basis") or amount_cfg.get("default", "added_arr"))
         amount_field = amount_cfg.get("fields", {}).get(amount_basis)
         if not amount_field:
             raise ValueError(f"unknown amount_basis: {bundle.get('amount_basis')}")

@@ -78,7 +78,7 @@
       "no_contact_roles": "No OpportunityContactRole is logged on the opportunity.",
       "single_threaded": "Only one contact is logged on the opportunity.",
       "no_champion": "No logged contact role matches a champion role.",
-      "missing_amount": "The amount/ACV field is blank.",
+      "missing_amount": "The amount/Added ARR field is blank.",
       "missing_next_step": "The NextStep field is blank.",
       "stale_activity": "LastActivityDate is older than stale_activity_days.",
       "overdue_close": "CloseDate is in the past but the opportunity is still open."

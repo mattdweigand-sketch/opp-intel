@@ -29,7 +29,7 @@ read `AGENTS.md`, then this file, then the `SKILL.md` section for the task.
 | Change the fiscal close calendar, close window, or flag-severity tiers | Core config | `../core/config/risk-model.json` (`pipeline` block) |
 | Change forecast posture labels or internal-evidence caps | Core config | `../core/config/risk-model.json` (`forecast`, `internal_evidence`) |
 | Retarget a new Salesforce org | Core config | `../core/config/sf-fields.json` |
-| Change the ACV source or forecast category convention | Core config | `../core/config/sf-fields.json` |
+| Change the Added ARR source or forecast category convention | Core config | `../core/config/sf-fields.json` |
 | Change the risk model | Core config | `../core/config/risk-model.json` |
 | Verify a change broke nothing | Test | `python3 tests/test_*.py` |
 

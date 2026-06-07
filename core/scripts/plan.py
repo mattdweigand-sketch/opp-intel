@@ -6,7 +6,7 @@ Two phases share this one script:
   1. PORTFOLIO phase — list the rep's open, closing-window opportunities.
      Input:  {"mode":"pipeline","today":"2026-06-04","window":"current_quarter"|"next_quarter"|"90d",
               "next_quarter":true,"owner_id":"005...","forecast":true,"posture":"conservative",
-              "amount_basis":"acv","internal":"auto"}   (owner_id optional on the first pass)
+              "amount_basis":"added_arr","internal":"auto"}   (owner_id optional on the first pass)
      Output: a getUserInfo step (to resolve OwnerId when not supplied) and, once owner_id
              is known, the scoped Opportunity SOQL.
 
@@ -175,7 +175,7 @@ def forecast_options(ctx, fields, model):
     if posture not in forecast_cfg.get("postures", []):
         raise ValueError(f"unknown forecast posture: {ctx.get('posture')}")
 
-    amount_basis = normalize_token(ctx.get("amount_basis") or amount_cfg.get("default", "acv"))
+    amount_basis = normalize_token(ctx.get("amount_basis") or amount_cfg.get("default", "added_arr"))
     amount_fields = amount_cfg.get("fields", {})
     if amount_basis not in amount_fields:
         raise ValueError(f"unknown amount_basis: {ctx.get('amount_basis')}")

@@ -43,7 +43,7 @@ Forecast options:
 | `/pipeline-forecast --window next_quarter` | Run the forecast view for next fiscal quarter. |
 | `/pipeline-forecast --posture defend-commit` | Focus on whether committed deals have enough evidence to defend. |
 | `/pipeline-forecast --posture identify-upside` | Look for credible upside while still naming weak evidence. |
-| `/pipeline-forecast --amount-basis acv` | Use ACV as the forecast amount basis. |
+| `/pipeline-forecast --amount-basis added-arr` | Use Added ARR as the forecast amount basis. |
 | `/pipeline-forecast --compare deliverables/prior-computed-inputs.json` | Compare against a prior Computed inputs artifact for movement. |
 | `/pipeline-forecast --internal auto` | Check Slack channel names and linked Drive docs only. |
 | `/pipeline-forecast --internal off` | Skip Slack and Google Drive internal evidence. |
@@ -60,7 +60,7 @@ dozens of full transcripts. For single-deal depth, use `../deal-read`.
 A read or forecast brief, short enough to read before a forecast call:
 
 - Confidence rating up front, tied to how much of the pipeline you got a current read on.
-- Forecast at a glance: total ACV in the window, ACV at risk, and the headline counts
+- Forecast at a glance: total Added ARR in the window, Added ARR at risk, and the headline counts
   (single-threaded, slipped/overdue, stale-data).
 - Riskiest first: deals ranked by severity of current evidence, each with cited evidence and a
   specific next action.
@@ -80,7 +80,7 @@ A read or forecast brief, short enough to read before a forecast call:
 
 Deals are ranked by **severity of current evidence**, not by a predicted probability of winning. A deal
 carrying a `red` flag (overdue, slipped, single-threaded, stalled, or late-stage with no upcoming
-customer meeting) outranks one with only `amber` flags; ties break on flag count, then ACV, then
+customer meeting) outranks one with only `amber` flags; ties break on flag count, then Added ARR, then
 days-to-close, all observed facts. Calendar flags only count when Calendar coverage is available;
 unavailable Calendar is an evidence gap, not a risk flag. There is **no win-
 probability model** here by design: grading deals against win/loss outcomes is a central, pooled data
@@ -156,7 +156,7 @@ Shape:
     "run_date": "...",
     "mode": "read|forecast|hygiene",
     "posture": "conservative|defend_commit|identify_upside",
-    "amount_basis": "acv",
+    "amount_basis": "added_arr",
     "internal_evidence": "auto|off|force"
   },
   "portfolio": {},
@@ -169,8 +169,8 @@ Shape:
 ```
 
 `forecast`, `internal_evidence`, `hygiene`, and `movement` appear only when the run needs them.
-ACV rows and ACV totals come only from Salesforce `Added_ARR__c`; non-Added-ARR Salesforce money
-fields and normalized aliases are not ACV sources.
+Added ARR rows and Added ARR totals come only from Salesforce `Added_ARR__c`; non-Added-ARR Salesforce money
+fields and normalized aliases are not Added ARR sources.
 
 ---
 

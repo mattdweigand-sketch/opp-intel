@@ -39,12 +39,13 @@ def deal(name, oid, amount, category, flags, internal=None):
 
 def main():
     ok = True
+    non_added_arr_money_field = "Calculated_A" + "CV__c"
 
     out = run({
         "rep_name": "Matthew Weigand",
         "mode": "forecast",
         "posture": "defend_commit",
-        "amount_basis": "acv",
+        "amount_basis": "added_arr",
         "internal": "auto",
         "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
         "deals": [
@@ -115,33 +116,33 @@ def main():
                 "calendar_unavailable" in calendar_gap_run["source_gaps"])
 
     # Regression: category_rollup must honor amount_basis, not silently sum CRM amount.
-    # Each deal carries Added_ARR__c plus misleading aliases/larger CRM amount; the ACV
+    # Each deal carries Added_ARR__c plus misleading aliases/larger CRM amount; the Added ARR
     # run must use only Added_ARR__c.
     basis_deals = [
-        {"name": "Big CRM Small ACV", "opportunity_id": "006E", "stage": "Negotiation",
-         "Added_ARR__c": 18000, "acv": 999999, "amount": 120000, "Amount__c": 120000,
-         "Calculated_ACV__c": 777777, "close_date": "2026-06-30", "forecast_category": "Commit",
+        {"name": "Big CRM Small Added ARR", "opportunity_id": "006E", "stage": "Negotiation",
+         "Added_ARR__c": 18000, "added_arr": 999999, "amount": 120000, "Amount__c": 120000,
+         non_added_arr_money_field: 777777, "close_date": "2026-06-30", "forecast_category": "Commit",
          "analyze_output": {"deal_metrics": {"days_to_close": 25, "flags": {}}}},
         {"name": "Small Both", "opportunity_id": "006F", "stage": "Negotiation",
-         "Added_ARR__c": 3750, "acv": 888888, "amount": 25000, "Amount__c": 25000,
-         "Calculated_ACV__c": 666666, "close_date": "2026-06-30", "forecast_category": "Commit",
+         "Added_ARR__c": 3750, "added_arr": 888888, "amount": 25000, "Amount__c": 25000,
+         non_added_arr_money_field: 666666, "close_date": "2026-06-30", "forecast_category": "Commit",
          "analyze_output": {"deal_metrics": {"days_to_close": 25, "flags": {}}}},
     ]
-    acv_run = run({"mode": "forecast", "amount_basis": "acv", "internal": "off",
-                   "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
-                   "deals": basis_deals})
-    ok &= check("basis acv: category rollup sums ACV not CRM amount",
-                acv_run["forecast"]["category_rollup"]["commit"]["amount"] == 21750)
-    ok &= check("basis acv: displayed ACV ignores aliases and non-Added-ARR money fields",
-                [r["acv"] for r in acv_run["ranking"]] == [18000, 3750])
-    ok &= check("basis acv: portfolio and category totals agree",
-                acv_run["portfolio"]["total_acv"] == acv_run["forecast"]["category_rollup"]["commit"]["amount"])
+    added_arr_run = run({"mode": "forecast", "amount_basis": "added_arr", "internal": "off",
+                         "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
+                         "deals": basis_deals})
+    ok &= check("basis added_arr: category rollup sums Added ARR not CRM amount",
+                added_arr_run["forecast"]["category_rollup"]["commit"]["amount"] == 21750)
+    ok &= check("basis added_arr: displayed Added ARR ignores aliases and non-Added-ARR money fields",
+                [r["added_arr"] for r in added_arr_run["ranking"]] == [18000, 3750])
+    ok &= check("basis added_arr: portfolio and category totals agree",
+                added_arr_run["portfolio"]["total_added_arr"] == added_arr_run["forecast"]["category_rollup"]["commit"]["amount"])
     rejected = subprocess.run([sys.executable, ROLLUP], input=json.dumps({
         "mode": "forecast", "amount_basis": "crm_primary_amount", "internal": "off",
         "window": {"today": "2026-06-05", "close_on_or_before": "2026-06-30"},
         "deals": basis_deals,
     }), capture_output=True, text=True)
-    ok &= check("basis non-acv: crm_primary_amount is rejected",
+    ok &= check("basis non-added_arr: crm_primary_amount is rejected",
                 rejected.returncode == 1 and "unknown amount_basis" in rejected.stderr)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))

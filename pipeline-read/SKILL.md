@@ -40,7 +40,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
 - `--next-quarter`
 - `--window current_quarter|next_quarter|30d`
 - `--posture conservative|defend-commit|identify-upside`
-- `--amount-basis acv`
+- `--amount-basis added-arr`
 - `--compare <prior-computed-inputs.json>`
 - `--internal auto|off|force`
 - `--internal-window 30d`
@@ -119,7 +119,7 @@ pipeline aggregation, once over all deals).
 1. Run `python3 <skill-dir>/scripts/plan.py` with `{"mode":"pipeline","today":"<YYYY-MM-DD>"}`. This
    resolves JSQ's current fiscal quarter from the Feb 1 fiscal-year start. Add `"next_quarter":true` or
    `"window":"next_quarter"` when the user asks for next quarter, or `"window":"30d"`, `"forecast":true`,
-   `"posture":"conservative"`, `"amount_basis":"acv"`, `"internal":"auto"`, or similar when the user
+   `"posture":"conservative"`, `"amount_basis":"added_arr"`, `"internal":"auto"`, or similar when the user
    asked for them. On the first pass it returns a
    `whoami` step: call Salesforce `getUserInfo` to get the running rep's Id.
 2. Run `plan.py` again with `{"mode":"pipeline","today":...,"window":...,"owner_id":"<your Id>",...}`.
@@ -128,7 +128,7 @@ pipeline aggregation, once over all deals).
    exact posture, amount basis, forecast category field, and internal-evidence mode. Run the SOQL as
    written via `soqlQuery`.
 3. **Large-run guardrail.** Count the returned opps. If the count exceeds `large_run_threshold`, list
-   them (name, stage, ACV from `Added_ARR__c` only, close date) and confirm with the rep before gathering — in read and
+   them (name, stage, Added ARR from `Added_ARR__c` only, close date) and confirm with the rep before gathering — in read and
    forecast each in-scope deal fans out its own subagent hitting the connectors in `plan.py`'s
    `per_deal_connectors` (Salesforce, Gmail, Google Calendar, and Zoom always; Slack and Google Drive whenever internal
    evidence is on, which is the default in those modes unless `--internal off` is passed). State that
@@ -261,7 +261,7 @@ scan is the §1 portfolio list plus one batched contact-roles query:
    ```
    compute.py emits the hygiene flags (`no_contact_roles`, `no_champion`, `missing_next_step`,
    `single_threaded`, `stale_activity` at the looser hygiene threshold, `overdue_close`). `rollup.py`
-   adds `missing_amount` itself, since it owns the `Added_ARR__c` ACV basis.
+   adds `missing_amount` itself, since it owns the `Added_ARR__c` Added ARR basis.
 4. Go to §4 with `"mode":"hygiene"`, then present §5-hygiene. No subagents, no `--compare`, no internal
    evidence.
 
@@ -274,7 +274,7 @@ Assemble the roll-up bundle and run it once:
   "rep_name": "<rep>",
   "mode": "read|forecast|hygiene",
   "posture": "conservative|defend_commit|identify_upside",
-  "amount_basis": "acv",
+  "amount_basis": "added_arr",
   "internal": "auto|off|force",
   "window": { ...the window block plan.py returned... },
   "prior_rollup": { ...prior Computed inputs JSON... },
@@ -295,13 +295,13 @@ Assemble the roll-up bundle and run it once:
 ```
 The `name`, `stage`, `Added_ARR__c`, and `close_date` come straight from the §1 portfolio list the orchestrator
 already holds — the per-deal step only owes you `analyze_output` plus its cited evidence, so a subagent
-need not echo the deal facts back. Do not populate ACV from any non-Added-ARR money field,
-`amount`, or a normalized `acv` alias; ACV is the Salesforce `Added_ARR__c` value. For forecast mode,
+need not echo the deal facts back. Do not populate Added ARR from any non-Added-ARR money field,
+`amount`, or a normalized `added_arr` alias; Added ARR is the Salesforce `Added_ARR__c` value. For forecast mode,
 also pass the forecast category from the same Salesforce portfolio row. If the user supplied `--compare`, load that file as
 JSON and pass the parsed object as `prior_rollup` (or a path as `compare_file`). It must be a prior
 Computed inputs object, not a prose brief. `rollup.py`
-returns `portfolio` (totals, ACV at risk, counts) and `ranking` (deals sorted by severity of current
-evidence: red flags before amber, then flag count, then Added ARR ACV, then days-to-close). In forecast mode it
+returns `portfolio` (totals, Added ARR at risk, counts) and `ranking` (deals sorted by severity of current
+evidence: red flags before amber, then flag count, then Added ARR, then days-to-close). In forecast mode it
 also returns `forecast.category_rollup`, `forecast.recommendations`, `internal_evidence`, and optional
 `movement`. In hygiene mode it returns `portfolio.distribution` (deals per dominant hygiene flag),
 `portfolio.flagged_deals`/`clean_deals`, and `hygiene.flag_precedence`; `ranking` is ordered by
@@ -330,11 +330,11 @@ Pipeline Read — <rep>, <N> deals closing by <window end>. Run <date>.
 Confidence: <High / Medium / Low> — <one clause on coverage, e.g. "Medium: full read on 9 of 11 deals;
 2 had stale email data and are flagged below.">
 
-Forecast at a glance: <total ACV in window; ACV at risk $X (Y%); single-threaded N; slipped/overdue N;
+Forecast at a glance: <total Added ARR in window; Added ARR at risk $X (Y%); single-threaded N; slipped/overdue N;
 stale-data N>. <one honest sentence on whether this forecast is as solid as it looks>
 
 Riskiest first
-1. <Deal> — <Stage>, <ACV>, closes <date>. Dominant risk: <X>, <evidence, cited>. → Do this: <specific
+1. <Deal> — <Stage>, <Added ARR>, closes <date>. Dominant risk: <X>, <evidence, cited>. → Do this: <specific
    action with a who/when>. Confidence: <H/M/L>.
 2. ...
 3. ...
@@ -384,19 +384,19 @@ Forecast Read - <rep>, <N> deals closing by <window end>. Run <date>.
 
 Confidence: <High / Medium / Low> - <coverage clause>.
 
-Review scope: <live Salesforce + Gmail + Calendar + Zoom, ACV basis Added_ARR__c, forecast posture, category convention>.
+Review scope: <live Salesforce + Gmail + Calendar + Zoom, Added ARR basis Added_ARR__c, forecast posture, category convention>.
 
 Internal evidence: <internal mode; Slack rooms found for N of M deals; linked proposal docs read for X
 deals; missing/unavailable rooms named when material>.
 
-The number: <total Added ARR ACV in window>. Realistic call: <ACV you would actually bank, based on computed
+The number: <total Added ARR in window>. Realistic call: <Added ARR you would actually bank, based on computed
 risk posture and recommendations>.
 
 Category rollup:
-- Commit: <count>, <ACV>, <ACV at risk>
-- Upside: <count>, <ACV>, <ACV at risk>
-- Pipeline: <count>, <ACV>, <ACV at risk>
-- Unknown: <count>, <ACV>, <ACV at risk>
+- Commit: <count>, <Added ARR>, <Added ARR at risk>
+- Upside: <count>, <Added ARR>, <Added ARR at risk>
+- Pipeline: <count>, <Added ARR>, <Added ARR at risk>
+- Unknown: <count>, <Added ARR>, <Added ARR at risk>
 
 Key movements: <only if --compare supplied and movement.evaluated is true; otherwise say movement was
 not evaluated, or say the comparison snapshot was missing/invalid if rollup.py recorded that>.
@@ -409,7 +409,7 @@ Highest-risk deals:
 1. <Deal> - <risk, evidence, next move>.
 
 Evidence gaps: <source gaps, stale data, missing connector data, unknown forecast category, missing
-Added ARR ACV, missing comparison snapshot, missing deal room, unavailable linked docs>.
+Added ARR, missing comparison snapshot, missing deal room, unavailable linked docs>.
 
 Your move this week: <single highest-leverage action>.
 
@@ -427,7 +427,7 @@ Rules:
 - Every Slack or Drive claim needs the source ref captured in `internal_evidence.signals`; omit claims
   without a source ref.
 - Slack and Drive can sharpen confidence, risk notes, evidence gaps, internal owner, and next move. They
-  cannot override Salesforce-owned Added ARR ACV, stage, close date, owner, or forecast category.
+  cannot override Salesforce-owned Added ARR, stage, close date, owner, or forecast category.
 - Same computed footer and validate gate as §5. Forecast briefs must pass
   `python3 <skill-dir>/scripts/validate_brief.py` before presenting. Show only `Validation: PASS` in
   the chat output; keep the JSON in the brief file only.
@@ -455,7 +455,7 @@ Hygiene distribution:
 - Clean: <n>
 
 By deal:
-1. <Deal> — <Stage>, <ACV>, closes <date>. <DOMINANT FLAG>: <the bare fact, e.g. "0 contact roles
+1. <Deal> — <Stage>, <Added ARR>, closes <date>. <DOMINANT FLAG>: <the bare fact, e.g. "0 contact roles
    logged" / "no champion role among 3 contacts" / "NextStep blank" / "last activity 47 days ago">.
 2. ...
 

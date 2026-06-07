@@ -13,9 +13,9 @@
   ],
   "find_fields": ["Id", "Name", "StageName", "CloseDate", "LastActivityDate", "OwnerId", "AccountId"],
   "amount_basis": {
-    "default": "acv",
+    "default": "added_arr",
     "fields": {
-      "acv": "Added_ARR__c"
+      "added_arr": "Added_ARR__c"
     }
   },
   "forecast_category": {

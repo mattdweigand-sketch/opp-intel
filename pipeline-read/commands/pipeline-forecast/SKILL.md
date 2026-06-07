@@ -30,7 +30,7 @@ Thin command frontend. The engine, shared config, and full pipeline live in this
 ## Arguments
 
 `--next-quarter` / `--window current_quarter|next_quarter|30d`; `--posture conservative|defend-commit|identify-upside`;
-`--amount-basis acv`; `--compare <prior-computed-inputs.json>`;
+`--amount-basis added-arr`; `--compare <prior-computed-inputs.json>`;
 `--internal auto|off|force`; `--internal-window 30d`. Movement requires `--compare` with a prior
 `pipeline-read.computed-inputs.v1` artifact, never inferred from current CRM history.
 

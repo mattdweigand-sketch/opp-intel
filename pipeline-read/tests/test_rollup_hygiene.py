@@ -22,11 +22,11 @@ def check(name, cond):
     return cond
 
 
-def deal(name, acv, dtc, flags, contacts=None, days_since_activity=None):
+def deal(name, added_arr, dtc, flags, contacts=None, days_since_activity=None):
     base = {"no_contact_roles": False, "single_threaded": False, "no_champion": False,
             "missing_next_step": False, "stale_activity": False, "overdue_close": False}
     base.update(flags)
-    return {"name": name, "stage": "X", "Added_ARR__c": acv, "close_date": "2026-07-30",
+    return {"name": name, "stage": "X", "Added_ARR__c": added_arr, "close_date": "2026-07-30",
             "analyze_output": {"deal_metrics": {"days_to_close": dtc, "contacts_engaged": contacts,
                                                  "days_since_last_activity": days_since_activity,
                                                  "flags": base}}}
@@ -40,7 +40,7 @@ def main():
         "mode": "hygiene",
         "window": {"today": "2026-06-05", "close_on_or_before": "2026-07-31"},
         "deals": [
-            # null acv -> rollup derives missing_amount (not a compute.py flag).
+            # null added_arr -> rollup derives missing_amount (not a compute.py flag).
             deal("Cendris", None, 35, {}, contacts=2),
             deal("Arcticum", 120000, 40, {"no_contact_roles": True, "no_champion": True,
                                           "single_threaded": True, "stale_activity": True}, contacts=0),
@@ -61,7 +61,7 @@ def main():
     )
     ok &= check("dominant: Arcticum picks highest-precedence flag, not single_threaded",
                 out["ranking"][0]["dominant_flag"] == "no_contact_roles")
-    ok &= check("missing_amount: derived by rollup from null acv",
+    ok &= check("missing_amount: derived by rollup from null added_arr",
                 "missing_amount" in [r for r in out["ranking"] if r["name"] == "Cendris"][0]["hygiene_flags"])
     ok &= check("clean deal: dominant_flag None, severity_tier clean",
                 out["ranking"][-1]["dominant_flag"] is None and out["ranking"][-1]["severity_tier"] == "clean")
@@ -76,12 +76,12 @@ def main():
     ok &= check("distribution: single_threaded not double-counted (lost to no_contact_roles)",
                 dist["single_threaded"] == 0)
 
-    # Tie-break: same dominant flag -> larger ACV first.
+    # Tie-break: same dominant flag -> larger Added ARR first.
     tie = run({"mode": "hygiene", "deals": [
         deal("Small", 10000, 5, {"no_champion": True}),
         deal("Big", 90000, 5, {"no_champion": True}),
     ]})
-    ok &= check("tie-break: larger ACV first", [r["name"] for r in tie["ranking"]] == ["Big", "Small"])
+    ok &= check("tie-break: larger Added ARR first", [r["name"] for r in tie["ranking"]] == ["Big", "Small"])
 
     # All-clean pipeline: everything ranks clean, distribution all-clean.
     clean = run({"mode": "hygiene", "deals": [deal("Solo", 50000, 10, {}, contacts=3)]})

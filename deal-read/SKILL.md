@@ -14,7 +14,7 @@ modifies recordings, posts to Slack, or edits Drive docs.
 ## Input
 
 `/deal-read <opportunity name | account name>`. If no deal is named, ask which one. If the name matches
-multiple opportunities, list the candidates (name, stage, ACV from `Added_ARR__c`, close date) and ask which.
+multiple opportunities, list the candidates (name, stage, Added ARR from `Added_ARR__c`, close date) and ask which.
 
 **Two modes, same pipeline (steps 1–4 are identical):**
 - Default (review): output the deal-risk coaching brief (§5).
@@ -142,7 +142,7 @@ as `internal_evidence`. Use this shape:
 `analyze.py` keeps only source-backed signals and turns missing rooms or unavailable linked docs into
 explicit `internal_evidence.source_gaps` in the computed footer. Slack and Drive evidence can affect
 confidence, source gaps, risk notes, and next-move wording. It cannot override Salesforce-owned fields
-(ACV from `Added_ARR__c`, stage, close date, owner), which stay deterministic. Pass `"internal": "off"` to skip Slack
+(Added ARR from `Added_ARR__c`, stage, close date, owner), which stay deterministic. Pass `"internal": "off"` to skip Slack
 and Drive entirely.
 
 ### 4. Score the deal-risk model
@@ -210,7 +210,7 @@ Conversational, direct, second person ("you"), coaching tone — not a report du
 writing-style skill for voice. Structure:
 
 ```
-Deal: <Name> — <Stage>, <ACV from Added_ARR__c>, closes <date> (<N> days out, <age> old)
+Deal: <Name> — <Stage>, <Added ARR from Added_ARR__c>, closes <date> (<N> days out, <age> old)
 
 Confidence: <High / Medium / Low> — <one clause on what it rests on, e.g. "Low: one call, no email
 thread, and email data flagged stale.">

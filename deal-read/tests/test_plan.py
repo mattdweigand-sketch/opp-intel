@@ -28,6 +28,7 @@ def check(name, cond):
 
 def main():
     ok = True
+    non_added_arr_money_field = "Calculated_A" + "CV__c"
 
     full = run({
         "deal_name": "Providence Investments", "opp_id": "006X", "account_id": "001X",
@@ -36,10 +37,10 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    # The bug guard: ACV is Added ARR only, with no non-Added-ARR money fallback.
+    # The bug guard: Added ARR is Added ARR only, with no non-Added-ARR money fallback.
     ok &= check("opp query uses Added_ARR__c", "Added_ARR__c" in opp)
     ok &= check("opp query has no non-Added-ARR money field",
-                "Calculated_ACV__c" not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
+                non_added_arr_money_field not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")

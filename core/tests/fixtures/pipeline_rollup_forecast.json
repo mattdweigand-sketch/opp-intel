@@ -12,7 +12,7 @@
       {
         "name": "Providence",
         "stage": "X",
-        "acv": 120000,
+        "added_arr": 120000,
         "close_date": "2026-06-30",
         "forecast_category": "Commit",
         "analyze_output": {
@@ -32,7 +32,7 @@
       {
         "name": "Acme",
         "stage": "X",
-        "acv": 80000,
+        "added_arr": 80000,
         "close_date": "2026-06-30",
         "forecast_category": "Best Case",
         "analyze_output": {
@@ -58,7 +58,7 @@
       "run_date": "2026-06-04",
       "mode": "forecast",
       "posture": "conservative",
-      "amount_basis": "acv",
+      "amount_basis": "added_arr",
       "internal_evidence": "auto"
     },
     "rep_name": "Matthew Weigand",
@@ -68,9 +68,9 @@
     },
     "portfolio": {
       "deal_count": 2,
-      "total_acv": 0,
-      "acv_at_risk": 0,
-      "acv_at_risk_pct": null,
+      "total_added_arr": 0,
+      "added_arr_at_risk": 0,
+      "added_arr_at_risk_pct": null,
       "deals_at_risk": 2,
       "by_dominant_flag": {
         "single_threaded": 1,
@@ -87,9 +87,9 @@
         "opportunity_id": null,
         "name": "Acme",
         "stage": "X",
-        "acv": null,
+        "added_arr": null,
         "amount": null,
-        "amount_basis": "acv",
+        "amount_basis": "added_arr",
         "forecast_category": "Best Case",
         "forecast_category_group": "upside",
         "close_date": "2026-06-30",
@@ -119,9 +119,9 @@
         "opportunity_id": null,
         "name": "Providence",
         "stage": "X",
-        "acv": null,
+        "added_arr": null,
         "amount": null,
-        "amount_basis": "acv",
+        "amount_basis": "added_arr",
         "forecast_category": "Commit",
         "forecast_category_group": "commit",
         "close_date": "2026-06-30",
@@ -163,7 +163,7 @@
       ]
     },
     "forecast": {
-      "amount_basis": "acv",
+      "amount_basis": "added_arr",
       "amount_field": "Added_ARR__c",
       "posture": "conservative",
       "category_convention": {

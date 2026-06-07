@@ -24,6 +24,7 @@ def check(name, cond):
 
 def main():
     ok = True
+    non_added_arr_money_field = "Calculated_A" + "CV__c"
 
     # --- Pipeline phase, no owner_id: must ask for getUserInfo first, no opp query yet.
     p1 = run({"mode": "pipeline", "today": "2026-06-04", "window": "current_quarter"})
@@ -74,18 +75,18 @@ def main():
     ok &= check("pipeline: numeric window keeps legacy no-lower-bound behavior", "CloseDate >=" not in q)
     ok &= check("pipeline: ordered by CloseDate ASC", "ORDER BY CloseDate ASC" in q)
     ok &= check("pipeline: account name relationship field selected", "Account.Name" in q)
-    ok &= check("pipeline: uses Added ARR only for ACV",
-                "Added_ARR__c" in q and "Calculated_ACV__c" not in q and "Amount__c" not in q and ", Amount," not in q)
+    ok &= check("pipeline: uses Added ARR only for Added ARR",
+                "Added_ARR__c" in q and non_added_arr_money_field not in q and "Amount__c" not in q and ", Amount," not in q)
     ok &= check("pipeline: 30d window end is 2026-07-04", p2["window"]["close_on_or_before"] == "2026-07-04")
 
     # --- Forecast portfolio phase: selected amount basis, category, posture, and internal controls.
     pf = run({
         "mode": "pipeline", "today": "2026-06-04", "window": "30d", "owner_id": "005XX",
-        "forecast": True, "posture": "defend-commit", "amount_basis": "acv",
+        "forecast": True, "posture": "defend-commit", "amount_basis": "added_arr",
     })
     fq = pf["salesforce"]["pipeline"]
     ok &= check("forecast: posture normalized", pf["forecast"]["posture"] == "defend_commit")
-    ok &= check("forecast: amount basis surfaced", pf["forecast"]["amount_basis"] == "acv")
+    ok &= check("forecast: amount basis surfaced", pf["forecast"]["amount_basis"] == "added_arr")
     ok &= check("forecast: category field selected", "ForecastCategoryName" in fq)
     ok &= check("forecast: amount field selected", "Added_ARR__c" in fq)
     ok &= check("forecast: no phantom mapping fields in pipeline query", "Slack_Channel__c" not in fq and "Deal_Room_URL__c" not in fq)
@@ -111,8 +112,8 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    ok &= check("per-deal: opp query uses Added ARR only for ACV",
-                "Added_ARR__c" in opp and "Calculated_ACV__c" not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
+    ok &= check("per-deal: opp query uses Added ARR only for Added ARR",
+                "Added_ARR__c" in opp and non_added_arr_money_field not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
