@@ -49,11 +49,24 @@ def main():
 
     pipeline = run_plan({"deal_name": "Acme", "opp_id": "006X", "account_id": "001X"}, surface="pipeline-read")
     ok &= check("pipeline per-deal plan: contact query preserved", "account_contacts" in pipeline["salesforce"])
+    ok &= check("deal plan: email thread cap uses deal depth", deal["gmail"]["max_threads"] == 10)
+    ok &= check("pipeline plan: email thread cap uses pipeline depth", pipeline["gmail"]["max_threads"] == 3)
     ok &= check("deal plan: calendar emitted", deal["calendar"]["source"] == "google_calendar")
     ok &= check("pipeline plan: calendar emitted", pipeline["calendar"]["source"] == "google_calendar")
 
     hygiene = run_plan({"mode": "pipeline", "hygiene": True, "today": "2026-06-04", "owner_id": "005XX"})
     ok &= check("hygiene plan: Salesforce only", hygiene["per_deal_connectors"] == ["Salesforce"])
+
+    fast = run_plan({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
+    ok &= check("pipeline fast: default run depth", fast["run_depth"] == "fast")
+    ok &= check("pipeline fast: bulk strategy", fast["execution_strategy"] == "bulk_first")
+    ok &= check("pipeline fast: starts Salesforce only", fast["per_deal_connectors"] == ["Salesforce"])
+
+    deep = run_plan({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX", "run_depth": "deep_search"})
+    ok &= check("pipeline deep search: run depth", deep["run_depth"] == "deep_search")
+    ok &= check("pipeline deep search: per-deal strategy", deep["execution_strategy"] == "per_deal_search_agents")
+    ok &= check("pipeline deep search: connector fan-out preserved",
+                deep["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     zoom = load_adapter("calls_zoom")
     gong = load_adapter("calls_gong")

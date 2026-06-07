@@ -29,6 +29,7 @@ def main():
     ok = True
     model = load("risk-model.json")
     sf = load("sf-fields.json")
+    profiles = load("depth-profiles.json")
 
     forecast = model["forecast"]
     ok &= check("forecast: postures configured",
@@ -56,6 +57,8 @@ def main():
     ok &= check("amount: default is acv", amount["default"] == "acv")
     ok &= check("amount: acv maps to Added_ARR__c",
                 amount["fields"]["acv"] == "Added_ARR__c")
+    ok &= check("amount: Added ARR is the only supported amount basis",
+                amount["fields"] == {"acv": "Added_ARR__c"})
     ok &= check("amount: every basis maps to a configured SF field",
                 all(field in allowed for field in amount["fields"].values()))
     ok &= check("amount: bare Amount is not default",
@@ -73,8 +76,19 @@ def main():
     internal = model["internal_evidence"]
     ok &= check("internal: default auto", internal["default"] == "auto")
     ok &= check("internal: pipeline default auto", internal["default_by_profile"]["pipeline"] == "auto")
-    ok &= check("internal: force-required fallback configured",
-                sf["internal_sources"]["slack_deal_room"]["fallback_requires_internal_force"] is True)
+    ok &= check("internal: auto channel fallback configured",
+                sf["internal_sources"]["slack_deal_room"]["channel_lookup_in_auto"] is True)
+    ok &= check("internal: force-required message search configured",
+                sf["internal_sources"]["slack_deal_room"]["message_search_requires_internal_force"] is True)
+
+    ok &= check("run depth: fast profile configured",
+                profiles["pipeline_fast"]["run_depth"] == "fast"
+                and profiles["pipeline_fast"]["execution_strategy"] == "bulk_first")
+    ok &= check("run depth: deep search profile configured",
+                profiles["pipeline_deep_search"]["run_depth"] == "deep_search"
+                and profiles["pipeline_deep_search"]["execution_strategy"] == "per_deal_search_agents")
+    ok &= check("run depth: deep search worker budget configured",
+                profiles["pipeline_deep_search"]["worker_budget"]["max_tool_calls_per_deal"] == 12)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

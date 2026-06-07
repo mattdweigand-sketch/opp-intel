@@ -11,7 +11,7 @@
   },
   "output": {
     "salesforce": {
-      "pipeline": "SELECT Id, Name, StageName, CloseDate, Added_ARR__c, Calculated_ACV__c, Amount__c, AccountId, OwnerId, LastActivityDate, ForecastCategoryName, NextStep, Account.Name FROM Opportunity WHERE OwnerId = '005XX' AND IsClosed = false AND CloseDate >= 2026-05-01 AND CloseDate <= 2026-07-31 ORDER BY CloseDate ASC"
+      "pipeline": "SELECT Id, Name, StageName, CloseDate, Added_ARR__c, AccountId, OwnerId, LastActivityDate, ForecastCategoryName, NextStep, Account.Name FROM Opportunity WHERE OwnerId = '005XX' AND IsClosed = false AND CloseDate >= 2026-05-01 AND CloseDate <= 2026-07-31 ORDER BY CloseDate ASC"
     },
     "window": {
       "today": "2026-06-04",
@@ -22,13 +22,31 @@
     },
     "large_run_threshold": 15,
     "per_deal_connectors": [
-      "Salesforce",
+      "Salesforce"
+    ],
+    "run_depth": "fast",
+    "execution_strategy": "bulk_first",
+    "conditional_connectors": [
       "Gmail",
       "Google Calendar",
-      "Zoom",
+      "Zoom"
+    ],
+    "deferred_connectors": [
       "Slack",
       "Google Drive"
     ],
+    "escalation_policy": {
+      "material_deal_acv_pct": 0.25,
+      "material_top_n_by_amount": 1,
+      "triggers": [
+        "material_amount",
+        "red_or_amber_risk",
+        "email_data_stale",
+        "activity_coverage_gap",
+        "primary_connector_degraded"
+      ],
+      "unresolved_result": "confidence_blocked_low"
+    },
     "internal_evidence": {
       "mode": "force",
       "window_days": 30,
@@ -48,6 +66,7 @@
         "clm_stage",
         "legal_task_stage"
       ],
+      "channel_search_allowed": true,
       "broad_search_allowed": true,
       "slack": {
         "query_type": "bounded_fallback_lookup",
@@ -57,7 +76,7 @@
             "action": "slack_search_channels",
             "terms": [],
             "channel_types": "public_channel,private_channel",
-            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
+            "on_match": "read up to max_messages from the matched channel; set coverage=found; skip remaining steps",
             "on_no_match": "proceed to step 2"
           },
           {
@@ -72,6 +91,7 @@
         "terms": [],
         "window_days": 30,
         "max_messages": 40,
+        "channel_search_allowed": true,
         "broad_search_allowed": true,
         "requires_internal_force": true
       },

@@ -59,6 +59,11 @@
     "flag_severity": {
       "red": ["overdue_close", "close_date_slipped", "single_threaded", "stalled_in_stage", "calendar_no_upcoming_late_stage"],
       "amber": ["stale_activity", "email_data_stale", "calendar_no_recent_meeting_after_stage_move", "calendar_next_meeting_no_buyer_attendees"]
+    },
+    "confidence_gate": {
+      "_comment": "Dollar-weighted fail-loud gate. A deal is 'material' if its ACV is at least material_deal_acv_pct of in-scope ACV OR it is among the material_top_n_by_amount largest deals. When a material deal has blind PRIMARY evidence — email_data_stale, or a primary-connector coverage gap (activity_coverage_gap / *_connector_degraded) — rollup.py sets portfolio.confidence_floor to Low and marks that deal confidence_blocked. Optional internal-evidence gaps (missing Slack deal room, checked_no_match, linked-doc) do NOT trip this gate; they are color, not primary evidence. This is a coverage/confidence control, never a risk weight: it changes how loudly the brief must hedge, never the deterministic ranking.",
+      "material_deal_acv_pct": 0.25,
+      "material_top_n_by_amount": 1
     }
   },
   "forecast": {
@@ -85,13 +90,13 @@
     }
   },
   "internal_evidence": {
-    "_comment": "Read-only internal evidence lane for mapped fund-admin deal rooms. auto uses mapped deal rooms only; force permits bounded fallback lookup. These sources can affect confidence, gaps, risk notes, and next-move wording, never Salesforce-owned opportunity truth or deterministic risk ranking.",
+    "_comment": "Read-only internal evidence lane for fund-admin deal rooms. auto uses mapped deal rooms first, then bounded Slack channel-name lookup from account/deal terms when no mapping exists. force also permits bounded Slack message-content lookup. These sources can affect confidence, gaps, risk notes, and next-move wording, never Salesforce-owned opportunity truth or deterministic risk ranking.",
     "default": "auto",
     "default_by_profile": {
       "deal": "auto",
       "pipeline": "auto"
     },
-    "scope": "mapped_deal_room_only",
+    "scope": "mapped_or_channel_name_deal_room",
     "default_window_days": 30,
     "max_messages_per_room": 80,
     "max_linked_docs_per_room": 5,

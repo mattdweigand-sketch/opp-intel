@@ -12,7 +12,7 @@
       {
         "name": "Providence",
         "stage": "X",
-        "acv": 120000,
+        "Added_ARR__c": 120000,
         "close_date": "2026-06-30",
         "forecast_category": "Commit",
         "analyze_output": {
@@ -32,7 +32,7 @@
       {
         "name": "Acme",
         "stage": "X",
-        "acv": 80000,
+        "Added_ARR__c": 80000,
         "close_date": "2026-06-30",
         "forecast_category": "Best Case",
         "analyze_output": {
@@ -80,7 +80,11 @@
       "slipped_or_overdue": 1,
       "stalled_in_stage": 0,
       "stale_data_deals": 1,
-      "coverage_gap_deals": []
+      "coverage_gap_deals": [],
+      "confidence_floor": "Low",
+      "confidence_blocked_deals": [
+        "Acme"
+      ]
     },
     "ranking": [
       {
@@ -105,7 +109,9 @@
         ],
         "last_touch": null,
         "last_touch_source": null,
-        "coverage_gaps": []
+        "coverage_gaps": [],
+        "confidence_blocked": true,
+        "confidence_block_reason": "email_data_stale"
       },
       {
         "opportunity_id": null,
@@ -127,7 +133,8 @@
         ],
         "last_touch": null,
         "last_touch_source": null,
-        "coverage_gaps": []
+        "coverage_gaps": [],
+        "confidence_blocked": false
       }
     ],
     "source_gaps": [],

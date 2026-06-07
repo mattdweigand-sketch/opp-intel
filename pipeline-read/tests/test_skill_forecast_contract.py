@@ -20,8 +20,9 @@ def main():
         "--posture conservative|defend-commit|identify-upside",
         "--next-quarter",
         "--window current_quarter|next_quarter|30d",
-        "--amount-basis acv|crm-primary-amount",
+        "--amount-basis acv",
         "--compare <prior-computed-inputs.json>",
+        "--deep-search",
         "--internal auto|off|force",
         "Slack",
         "Google Calendar",
@@ -37,6 +38,10 @@ def main():
         "Internal evidence:",
         "JSQ's fiscal year starts Feb 1",
         "--window next_quarter",
+        "pipeline_bulk_reduce.py",
+        "run_depth",
+        "bulk_first",
+        "deep_search",
     ]
 
     ok = True
@@ -45,8 +50,8 @@ def main():
 
     ok &= check("SKILL no longer describes forecast as only forecast-realism",
                 "forecast-realism view" not in text)
-    ok &= check("SKILL routes broad internal lookup through force",
-                "Broad Slack or Drive lookup is allowed only under `internal=force`" in text)
+    ok &= check("SKILL routes message-content lookup through force",
+                "Slack message-content lookup is allowed only under `internal=force`" in text)
     ok &= check("SKILL does not advertise removed /pipeline-triage command",
                 "/pipeline-triage" not in text
                 and "pipeline-triage" not in text)

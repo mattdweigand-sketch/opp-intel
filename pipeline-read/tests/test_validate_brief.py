@@ -150,6 +150,39 @@ def main():
     ok &= check("hygiene brief does not demand forecast sections",
                 "Category rollup" not in out and "Recommendation changes" not in out)
 
+    # Confidence floor (NW1 regression): when rollup sets portfolio.confidence_floor=Low,
+    # a brief claiming Medium/High must fail; Low passes.
+    def floor_footer(floor="Low", blocked=("NW1",)):
+        obj = {
+            "schema_version": "pipeline-read.computed-inputs.v1",
+            "run": {"mode": "read"},
+            "portfolio": {"deal_count": 2, "stale_data_deals": 1,
+                          "confidence_floor": floor,
+                          "confidence_blocked_deals": list(blocked)},
+            "ranking": [{"name": "NW1", "severity_tier": "red",
+                         "risk_flags": ["close_date_slipped", "email_data_stale"],
+                         "last_touch": "2026-06-04", "confidence_blocked": True}],
+        }
+        return "```json\n" + json.dumps(obj) + "\n```"
+
+    blind = "Where you're blind: NW1 last touch 2026-06-04, email view lags.\n\n"
+    rc, out = run("Confidence: Medium.\n\n" + blind + "Computed inputs:\n" + floor_footer())
+    ok &= check("floor Low + Medium confidence fails", rc == 1 and "confidence_floor" in out.lower())
+
+    rc, out = run("Confidence: High.\n\n" + blind + "Computed inputs:\n" + floor_footer())
+    ok &= check("floor Low + High confidence fails", rc == 1 and "confidence_floor" in out.lower())
+
+    rc, out = run("Confidence: Low.\n\n" + blind + "Computed inputs:\n" + floor_footer())
+    ok &= check("floor Low + Low confidence passes", rc == 0)
+
+    # No floor (null) leaves confidence to the model — Medium still passes.
+    rc, out = run("Confidence: Medium.\n\n" + blind + "Computed inputs:\n" + floor_footer(floor=None, blocked=()))
+    ok &= check("no floor + Medium passes", rc == 0)
+
+    # Backward compat: a footer with no confidence_floor key at all is unconstrained.
+    rc, out = run("Confidence: Medium, partial coverage.\n\nComputed inputs:\n" + footer(stale=False))
+    ok &= check("legacy footer without floor key is unconstrained", rc == 0)
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

@@ -55,6 +55,7 @@ deal-read/
 │   ├── analyze.py     #   single processing entrypoint
 │   ├── compute.py     #   deal metrics (called by analyze.py)
 │   ├── callstats.py   #   call-execution metrics (called by analyze.py)
+│   ├── transcript_extract.py # transcript signal reducer (called by analyze.py)
 │   └── validate_brief.py # output-contract gate run on the drafted brief
 ../core/config/        # Shared owned data
 ├── risk-model.json    # scored dimensions, thresholds, discovery checklist, legal-status set

@@ -17,7 +17,7 @@
   "output": {
     "salesforce": {
       "find": "FIND {Providence Investments*} IN NAME FIELDS RETURNING Opportunity(Id, Name, StageName, CloseDate, LastActivityDate, OwnerId, AccountId)",
-      "opportunity": "SELECT Id, Name, StageName, ForecastCategory, Probability, Type, Added_ARR__c, Calculated_ACV__c, Amount__c, Full_Deal_Amount__c, Added_ACV_Fund_Admin__c, Added_GPX_Forecast__c, CloseDate, CreatedDate, LastActivityDate, NextStep, Next_Steps_Last_Modified_Date__c, SE_Next_Steps__c, SE_Next_Step_Date__c, Gong_Competitors_Mentioned__c, JSQ_Competitive_With__c, Competition_Justification__c, Champion_WdB__c, Decision_Maker__c, Pain_Need__c, Decision_Process_Justification__c, Decision_Criteria_Justification__c, Legal_Status__c, Fund_Admin_Proposal_Approval_Status__c, Critical_Event__c, Last_Meaningful_Event__c, Last_Meaningful_Event_Date__c FROM Opportunity WHERE Id = '006X'",
+      "opportunity": "SELECT Id, Name, StageName, ForecastCategory, Probability, Type, Added_ARR__c, CloseDate, CreatedDate, LastActivityDate, NextStep, Next_Steps_Last_Modified_Date__c, SE_Next_Steps__c, SE_Next_Step_Date__c, Gong_Competitors_Mentioned__c, JSQ_Competitive_With__c, Competition_Justification__c, Champion_WdB__c, Decision_Maker__c, Pain_Need__c, Decision_Process_Justification__c, Decision_Criteria_Justification__c, Legal_Status__c, Fund_Admin_Proposal_Approval_Status__c, Critical_Event__c, Last_Meaningful_Event__c, Last_Meaningful_Event_Date__c FROM Opportunity WHERE Id = '006X'",
       "contact_roles": {
         "tool": "getRelatedRecords",
         "sobject-name": "Opportunity",
@@ -38,7 +38,9 @@
     },
     "gmail": {
       "sent_freshness": "in:sent newer_than:90d",
+      "max_threads": 10,
       "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d",
+      "_freshness_rule": "MANDATORY: expand at most max_threads=10 threads from thread_search. If result metadata exposes latest thread dates, use the newest 10; otherwise use the first 10 returned by the connector. For every thread in that capped set, call get_thread and read its FULL message list. Compute this deal's email freshness (newest inbound, newest outbound, last_inbound/outbound dates) from the MAX message date across the expanded threads \u2014 NOT from the search-result snippet, which often shows the oldest messages of a long reused-subject thread. A thread returned by a newer_than: query contains an in-window message even when its snippet looks old: expand it, do not drop it. Do NOT expand threads beyond max_threads=10; for deeper email history, hand the deal to deal-read. Setting email_data_stale off a snippet date is the exact failure this rule prevents.",
       "workflow_signals": "from:(ironcladapp.com OR lexion.ai OR gong.io OR scratchpad.com) (\"Providence Investments\") newer_than:90d",
       "_workflow_note": "Read these workflow-tool notifications and map each sender domain to its signal_type via internal_evidence.workflow_tools in risk-model.json (e.g. ironcladapp.com -> clm_stage). Emit each as an internal_evidence signal with a source_ref (the message id/link). Internal-evidence lane only: these inform confidence, source gaps, risk notes, and next-move wording, never Salesforce-owned truth, ranking, or flag_severity."
     },
@@ -98,6 +100,7 @@
         "clm_stage",
         "legal_task_stage"
       ],
+      "channel_search_allowed": true,
       "broad_search_allowed": false,
       "slack": {
         "query_type": "mapped_deal_room",

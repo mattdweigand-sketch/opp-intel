@@ -34,6 +34,10 @@ def main():
 
     ok &= check("read: Calendar connector named", "Google Calendar" in read_cmd)
     ok &= check("forecast: Calendar connector named", "Google Calendar" in forecast)
+    ok &= check("read: deep search option named", "--deep-search" in read_cmd)
+    ok &= check("forecast: deep search option named", "--deep-search" in forecast)
+    ok &= check("read: fast path uses bulk reducer", "pipeline_bulk_reduce.py" in read_cmd)
+    ok &= check("forecast: fast path uses bulk reducer", "pipeline_bulk_reduce.py" in forecast)
     ok &= check("hygiene: Calendar explicitly excluded", "no Gmail, Calendar, Zoom, Slack, or Drive" in hygiene)
     ok &= check("frontends: old /pipeline-triage command absent",
                 "/pipeline-triage" not in read_cmd

@@ -10,7 +10,7 @@ Bundle:
   {
     "rep_name": "Matthew Weigand",
     "compute_input": { ... what compute.py expects ... },
-    "transcript_file": "/abs/path/to/asset.json",   # optional; enables call_execution
+    "transcript_file": "/abs/path/to/asset.json",   # optional; enables call_execution + call_extract
     "prior_opps": [ { closed opps on the same account } ],  # optional
     "calendar_evidence": { ... historical + upcoming meetings } # optional
     "internal_evidence": { ... Slack + linked-doc findings } # optional
@@ -184,9 +184,11 @@ def main():
     deal_metrics = run_script("compute.py", stdin_obj=compute_input)
 
     call_execution = None
+    call_extract = None
     tf = bundle.get("transcript_file")
     if tf and os.path.exists(tf):
         call_execution = run_script("callstats.py", args=[bundle.get("rep_name", ""), tf])
+        call_extract = run_script("transcript_extract.py", args=[tf])
 
     out = {
         "deal_metrics": deal_metrics,
@@ -195,6 +197,8 @@ def main():
         "calendar_evidence": calendar_evidence,
         "internal_evidence": normalize_internal_evidence(bundle.get("internal_evidence")),
     }
+    if call_extract is not None:
+        out["call_extract"] = call_extract
     json.dump(out, sys.stdout, indent=2)
     sys.stdout.write("\n")
 

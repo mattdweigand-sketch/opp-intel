@@ -2,8 +2,7 @@
   "_comment": "Chosen Salesforce field/query mapping for plan.py. Edit this to retarget another org — it's the one place SOQL field names live, so the model never improvises them (that caused the 'Amount' error). Discover real names with getObjectSchema once, then record them here.",
   "opportunity_fields": [
     "Id", "Name", "StageName", "ForecastCategory", "Probability", "Type",
-    "Added_ARR__c", "Calculated_ACV__c", "Amount__c", "Full_Deal_Amount__c",
-    "Added_ACV_Fund_Admin__c", "Added_GPX_Forecast__c",
+    "Added_ARR__c",
     "CloseDate", "CreatedDate", "LastActivityDate",
     "NextStep", "Next_Steps_Last_Modified_Date__c", "SE_Next_Steps__c", "SE_Next_Step_Date__c",
     "Gong_Competitors_Mentioned__c", "JSQ_Competitive_With__c", "Competition_Justification__c",
@@ -16,8 +15,7 @@
   "amount_basis": {
     "default": "acv",
     "fields": {
-      "acv": "Added_ARR__c",
-      "crm_primary_amount": "Amount__c"
+      "acv": "Added_ARR__c"
     }
   },
   "forecast_category": {
@@ -30,7 +28,7 @@
   },
   "pipeline_scope": {
     "_comment": "The portfolio list query: every open opp the running rep owns whose CloseDate falls inside the window. OwnerId is resolved at runtime via getUserInfo. Fiscal quarter bounds come from plan.py using the Feb 1 fiscal-year start in risk-model.json.",
-    "fields": ["Id", "Name", "StageName", "CloseDate", "Added_ARR__c", "Calculated_ACV__c", "Amount__c", "AccountId", "OwnerId", "LastActivityDate", "ForecastCategoryName", "NextStep"],
+    "fields": ["Id", "Name", "StageName", "CloseDate", "Added_ARR__c", "AccountId", "OwnerId", "LastActivityDate", "ForecastCategoryName", "NextStep"],
     "account_name_field": "Account.Name",
     "owner_filter": "OwnerId = '{owner_id}'",
     "open_filter": "IsClosed = false",
@@ -51,7 +49,8 @@
     "slack_deal_room": {
       "mapping_fields": [],
       "fallback_lookup": "account_or_opportunity_name",
-      "fallback_requires_internal_force": true
+      "channel_lookup_in_auto": true,
+      "message_search_requires_internal_force": true
     },
     "linked_docs": {
       "allowed_sources": ["google_drive"],

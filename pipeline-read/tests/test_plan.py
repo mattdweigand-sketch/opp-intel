@@ -36,8 +36,13 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: read default runs Calendar and mapped Slack/Drive",
-                p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+    ok &= check("pipeline: default run depth is fast", p1["run_depth"] == "fast")
+    ok &= check("pipeline: default strategy is bulk first", p1["execution_strategy"] == "bulk_first")
+    ok &= check("pipeline: fast default starts Salesforce-only",
+                p1["per_deal_connectors"] == ["Salesforce"])
+    ok &= check("pipeline: fast default defers primary and internal connectors",
+                p1["conditional_connectors"] == ["Gmail", "Google Calendar", "Zoom"]
+                and p1["deferred_connectors"] == ["Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
     pq = run({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
@@ -74,7 +79,8 @@ def main():
     ok &= check("pipeline: numeric window keeps legacy no-lower-bound behavior", "CloseDate >=" not in q)
     ok &= check("pipeline: ordered by CloseDate ASC", "ORDER BY CloseDate ASC" in q)
     ok &= check("pipeline: account name relationship field selected", "Account.Name" in q)
-    ok &= check("pipeline: uses real ACV field, no bare Amount", "Calculated_ACV__c" in q and ", Amount," not in q)
+    ok &= check("pipeline: uses Added_ARR__c, no unreliable amount fields",
+                "Added_ARR__c" in q and "Calculated_ACV__c" not in q and "Amount__c" not in q and ", Amount," not in q)
     ok &= check("pipeline: 30d window end is 2026-07-04", p2["window"]["close_on_or_before"] == "2026-07-04")
 
     # --- Forecast portfolio phase: selected amount basis, category, posture, and internal controls.
@@ -89,8 +95,20 @@ def main():
     ok &= check("forecast: amount field selected", "Added_ARR__c" in fq)
     ok &= check("forecast: no phantom mapping fields in pipeline query", "Slack_Channel__c" not in fq and "Deal_Room_URL__c" not in fq)
     ok &= check("forecast: default internal is auto", pf["forecast"]["internal"] == "auto")
-    ok &= check("forecast: connectors include Calendar, Slack, and Drive when internal on",
-                pf["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+    ok &= check("forecast: fast default starts Salesforce-only",
+                pf["per_deal_connectors"] == ["Salesforce"])
+    ok &= check("forecast: fast default records internal as deferred",
+                pf["deferred_connectors"] == ["Slack", "Google Drive"])
+
+    deep = run({
+        "mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX",
+        "run_depth": "deep_search",
+    })
+    ok &= check("deep search: run depth surfaced", deep["run_depth"] == "deep_search")
+    ok &= check("deep search: per-deal search strategy emitted",
+                deep["execution_strategy"] == "per_deal_search_agents")
+    ok &= check("deep search: connectors include Calendar, Slack, and Drive when internal on",
+                deep["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     poff = run({
         "mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX",
@@ -99,8 +117,24 @@ def main():
     ok &= check("internal off: no internal plan emitted", "internal_evidence" not in poff)
     ok &= check("internal off: no Slack mapping fields selected",
                 "Slack_Channel__c" not in poff["salesforce"]["pipeline"])
-    ok &= check("internal off: connectors exclude Slack/Drive but keep Calendar",
-                poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom"])
+    ok &= check("internal off: fast still starts Salesforce-only",
+                poff["per_deal_connectors"] == ["Salesforce"])
+
+    bulk = run({
+        "mode": "pipeline", "today": "2026-06-04",
+        "opp_ids": ["006A", "006B"],
+        "account_ids": ["001A", "001B"],
+    })
+    ok &= check("fast bulk: contact roles query emitted",
+                "bulk_contact_roles" in bulk["salesforce"]
+                and "006A" in bulk["salesforce"]["bulk_contact_roles"])
+    ok &= check("fast bulk: account contacts query emitted",
+                "bulk_account_contacts" in bulk["salesforce"]
+                and "001A" in bulk["salesforce"]["bulk_account_contacts"])
+    ok &= check("fast bulk: tasks and history emitted",
+                "bulk_tasks" in bulk["salesforce"] and "bulk_history" in bulk["salesforce"])
+    ok &= check("fast bulk: reducer script surfaced",
+                bulk["bulk_reduce"]["script"] == "scripts/pipeline_bulk_reduce.py")
 
     # --- Per-deal phase: unchanged deal-read contract (no mode key => deal plan).
     full = run({
@@ -110,11 +144,18 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    ok &= check("per-deal: opp query uses Calculated_ACV__c", "Calculated_ACV__c" in opp)
+    ok &= check("per-deal: opp query uses Added_ARR__c", "Added_ARR__c" in opp)
+    ok &= check("per-deal: opp query omits unreliable amount fields",
+                "Calculated_ACV__c" not in opp and "Amount__c" not in opp)
     ok &= check("per-deal: no bare Amount field", ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("per-deal: gmail thread cap uses pipeline depth", full["gmail"]["max_threads"] == 3)
+    ok &= check("per-deal: gmail freshness rule mandates get_thread over snippet",
+                "get_thread" in full["gmail"].get("_freshness_rule", "")
+                and "snippet" in full["gmail"]["_freshness_rule"]
+                and "max_threads=3" in full["gmail"]["_freshness_rule"])
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")
@@ -133,17 +174,22 @@ def main():
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
         "forecast": True, "internal": "auto",
     })
-    ok &= check("internal auto: missing room recorded",
-                missing["internal_evidence"]["coverage"] == "deal_room_missing")
-    ok &= check("internal auto: no fallback Slack query",
-                "slack" not in missing["internal_evidence"])
+    ok &= check("internal auto: bounded fallback lookup emitted",
+                missing["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
+    ok &= check("internal auto: channel lookup terms emitted",
+                missing["internal_evidence"]["slack"]["steps"][0]["action"] == "slack_search_channels"
+                and "Providence Investments" in missing["internal_evidence"]["slack"]["terms"])
+    ok &= check("internal auto: no broad message search",
+                len(missing["internal_evidence"]["slack"]["steps"]) == 1
+                and missing["internal_evidence"]["slack"]["broad_search_allowed"] is False)
 
     default_internal = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
     })
-    ok &= check("internal default: no fallback Slack query",
+    ok &= check("internal default: bounded channel lookup emitted",
                 default_internal["internal_evidence"]["mode"] == "auto"
-                and "slack" not in default_internal["internal_evidence"])
+                and default_internal["internal_evidence"]["slack"]["steps"][0]["action"] == "slack_search_channels"
+                and default_internal["internal_evidence"]["slack"]["broad_search_allowed"] is False)
 
     force = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
@@ -153,6 +199,9 @@ def main():
                 force["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")
     ok &= check("internal force: broad search allowed only there",
                 force["internal_evidence"]["slack"]["broad_search_allowed"] is True)
+    ok &= check("internal force: message fallback follows channel lookup",
+                [step["action"] for step in force["internal_evidence"]["slack"]["steps"]]
+                == ["slack_search_channels", "slack_search_public_and_private"])
     ok &= check("internal force: pipeline depth caps applied",
                 force["internal_evidence"]["max_messages"] == 40
                 and force["internal_evidence"]["max_linked_docs"] == 3)

@@ -26,7 +26,7 @@ def deal(name, acv, dtc, flags, contacts=None, days_since_activity=None):
     base = {"no_contact_roles": False, "single_threaded": False, "no_champion": False,
             "missing_next_step": False, "stale_activity": False, "overdue_close": False}
     base.update(flags)
-    return {"name": name, "stage": "X", "acv": acv, "close_date": "2026-07-30",
+    return {"name": name, "stage": "X", "Added_ARR__c": acv, "close_date": "2026-07-30",
             "analyze_output": {"deal_metrics": {"days_to_close": dtc, "contacts_engaged": contacts,
                                                  "days_since_last_activity": days_since_activity,
                                                  "flags": base}}}
@@ -40,7 +40,7 @@ def main():
         "mode": "hygiene",
         "window": {"today": "2026-06-05", "close_on_or_before": "2026-07-31"},
         "deals": [
-            # null acv -> rollup derives missing_amount (not a compute.py flag).
+            # null Added_ARR__c -> rollup derives missing_amount (not a compute.py flag).
             deal("Cendris", None, 35, {}, contacts=2),
             deal("Arcticum", 120000, 40, {"no_contact_roles": True, "no_champion": True,
                                           "single_threaded": True, "stale_activity": True}, contacts=0),
@@ -61,7 +61,7 @@ def main():
     )
     ok &= check("dominant: Arcticum picks highest-precedence flag, not single_threaded",
                 out["ranking"][0]["dominant_flag"] == "no_contact_roles")
-    ok &= check("missing_amount: derived by rollup from null acv",
+    ok &= check("missing_amount: derived by rollup from null Added_ARR__c",
                 "missing_amount" in [r for r in out["ranking"] if r["name"] == "Cendris"][0]["hygiene_flags"])
     ok &= check("clean deal: dominant_flag None, severity_tier clean",
                 out["ranking"][-1]["dominant_flag"] is None and out["ranking"][-1]["severity_tier"] == "clean")

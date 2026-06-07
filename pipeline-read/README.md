@@ -1,11 +1,12 @@
 # Pipeline Read
 
 Pipeline Read ranks forecast risk across a rep's whole pipeline. It is the pipeline-level sibling of
-[Deal Read](../deal-read): it pulls the rep's own Gmail threads, Google Calendar meetings, Zoom recordings, Salesforce data,
-mapped Slack deal rooms, and linked Google Drive proposal docs for every open opportunity closing in
-JSQ's current fiscal quarter by default. It runs each deal through the same deal-risk model, then rolls
-the results into one ranked read: which deals are most at risk, the dominant risk on each with cited
-evidence, and the next move. It is read-only across every source and makes no writes, not even a draft.
+[Deal Read](../deal-read): the standard path is fast and bulk-first, using Salesforce portfolio evidence
+first and escalating only material, risky, or blind deals to bounded Gmail, Calendar, Zoom, Slack, and
+Drive evidence. `--deep-search` opts into richer per-deal connector fan-out when the extra time and
+tokens are worth it. It runs each deal through the shared deal-risk model, then rolls the results into
+one ranked read: which deals are most at risk, the dominant risk on each with cited evidence, and the
+next move. It is read-only across every source and makes no writes, not even a draft.
 
 ---
 
@@ -32,6 +33,7 @@ decide where the week goes, and forecast when you need to commit a number.
 Other options:
 
 - `--next-quarter` runs any view against next fiscal quarter.
+- `--deep-search` runs the slower per-deal search-agent path for read or forecast.
 - For in-depth single-deal analysis, use `../deal-read` in this repo.
 
 Forecast options:
@@ -45,13 +47,15 @@ Forecast options:
 | `/pipeline-forecast --posture identify-upside` | Look for credible upside while still naming weak evidence. |
 | `/pipeline-forecast --amount-basis acv` | Use ACV as the forecast amount basis. |
 | `/pipeline-forecast --compare deliverables/prior-computed-inputs.json` | Compare against a prior Computed inputs artifact for movement. |
+| `/pipeline-read --deep-search` | Use bounded per-deal search agents instead of the standard fast path. |
 | `/pipeline-forecast --internal auto` | Read mapped Slack deal rooms and linked Drive docs only. |
 | `/pipeline-forecast --internal off` | Skip Slack and Google Drive internal evidence. |
 | `/pipeline-forecast --internal force --internal-window 30d` | Use bounded fallback Slack lookup over the last 30 days when no room is mapped. |
 
-Pipeline Read stays *shallow per deal* so a full run stays practical. It works mostly from meeting
-summaries plus Salesforce and email-freshness signals, so it can score every deal without reading
-dozens of full transcripts. For single-deal depth, use `../deal-read`.
+Pipeline Read stays *shallow per deal* so a full run stays practical. Standard mode is bulk-first and
+uses deferred-source coverage gaps instead of pretending ungathered Gmail, Calendar, Zoom, Slack, or
+Drive evidence is clean silence. Deep search keeps the bounded per-deal search path for cases where a
+portfolio-level answer needs richer evidence. For single-deal depth, use `../deal-read`.
 
 ---
 
@@ -94,9 +98,9 @@ scores.
 Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
 affect meeting-cadence flags in read and forecast. Slack deal rooms and linked proposal docs can
 affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
-deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which restricts
-evidence to mapped deal rooms and linked docs. Broad Slack fallback lookup is allowed only when the
-internal mode is explicitly `force`.
+deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which uses mapped
+deal rooms first and then bounded Slack channel-name lookup when no mapping exists. Slack
+message-content fallback is allowed only when the internal mode is explicitly `force`.
 
 ---
 
@@ -104,20 +108,23 @@ internal mode is explicitly `force`.
 
 1. Point an agent at the repo. Claude Code reads `CLAUDE.md` automatically; any other agent starts at
    `AGENTS.md`, then `CONTEXT.md`.
-2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Gmail,
-   Calendar, and Zoom are always part of read and forecast. Slack and Google Drive are the internal
-   evidence lane; default `auto` reads mapped rooms and linked docs only. Use `--internal force` for
-   bounded fallback lookup or `--internal off` to skip those internal sources.
+2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Standard
+   read/forecast starts with Salesforce bulk evidence and escalates bounded connector reads only when
+   materiality, risk, or coverage gaps justify it. Deep search fans out to the read-only connectors per
+   deal. Use `--internal force` for bounded fallback lookup or `--internal off` to skip internal
+   sources.
 3. Ask: `/pipeline-read` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
 Pipeline Read is one surface in this shared repo. Shared deterministic mechanics live in `../core/`;
 for single-deal depth, use `../deal-read`.
 
-A full read loops the per-deal connectors `plan.py` reports in `per_deal_connectors`: Salesforce,
-Gmail, Google Calendar, and Zoom always, plus Slack and Google Drive whenever internal evidence is on. The default scope
-is JSQ's current fiscal quarter. JSQ's fiscal year starts Feb 1, so quarters run Feb-Apr, May-Jul,
-Aug-Oct, and Nov-Jan. The skill confirms before running when more than ~15 deals are in scope.
+The default scope is JSQ's current fiscal quarter. JSQ's fiscal year starts Feb 1, so quarters run
+Feb-Apr, May-Jul, Aug-Oct, and Nov-Jan. In standard mode, `plan.py` reports `execution_strategy:
+bulk_first` and `per_deal_connectors: ["Salesforce"]`; conditional and deferred connectors are named
+separately. In deep search, `plan.py` reports `execution_strategy: per_deal_search_agents` and the
+full per-deal connector list. The skill confirms before deep search when more than ~15 deals are in
+scope.
 
 Pipeline Read has no Sales plugin dependency. Broader forecast workflows can consume its output, but
 they should consume the Computed inputs artifact rather than re-score its deals.
@@ -156,7 +163,7 @@ Shape:
     "run_date": "...",
     "mode": "read|forecast|hygiene",
     "posture": "conservative|defend_commit|identify_upside",
-    "amount_basis": "acv|crm_primary_amount",
+    "amount_basis": "acv",
     "internal_evidence": "auto|off|force"
   },
   "portfolio": {},
@@ -194,11 +201,14 @@ pipeline-read/
 │   ├── pipeline-forecast/SKILL.md  #   runs the engine in forecast mode → §5-forecast
 │   └── pipeline-hygiene/SKILL.md   #   runs the engine in hygiene mode (SF-only) → §5-hygiene
 ├── scripts/           # Compatibility wrappers into ../core/scripts and ../core/validators
-│   ├── plan.py        #   emits the portfolio query + per-deal queries
+│   ├── plan.py        #   emits portfolio, fast bulk, and deep-search query plans
+│   ├── pipeline_bulk_reduce.py # groups fast-mode bulk Salesforce rows into analyze bundles
+│   ├── pipeline_reduce.py # reduces raw per-deal connector payloads before analyze.py
 │   ├── analyze.py     #   per-deal processing entrypoint (copied from deal-read)
 │   ├── rollup.py      #   ranks deals, computes forecast rollups, compares snapshots
 │   ├── compute.py     #   deal metrics (called by analyze.py; from deal-read)
 │   ├── callstats.py   #   call-execution metrics (called by analyze.py; from deal-read)
+│   ├── transcript_extract.py # transcript signal reducer (available for shared compatibility)
 │   └── validate_brief.py # output-contract gate run on the drafted brief
 ../core/config/        # Shared owned data
 ├── risk-model.json    # dimensions, thresholds, pipeline/forecast/internal/hygiene config
