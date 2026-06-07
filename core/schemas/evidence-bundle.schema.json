@@ -30,6 +30,31 @@
     },
     "salesforce_evidence": { "type": "object" },
     "email_evidence": { "type": "object" },
+    "coverage_manifest_required": { "type": "boolean" },
+    "coverage_manifest": {
+      "type": "object",
+      "properties": {
+        "required": { "type": "boolean" },
+        "profile": { "enum": ["deal", "pipeline", "hygiene", null] },
+        "expected_sources": {
+          "type": "array",
+          "items": {
+            "enum": ["salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"]
+          }
+        },
+        "source_reads": {
+          "type": ["array", "object"],
+          "items": { "$ref": "#/$defs/source_read" },
+          "additionalProperties": { "$ref": "#/$defs/source_read" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "source_reads": {
+      "type": ["array", "object"],
+      "items": { "$ref": "#/$defs/source_read" },
+      "additionalProperties": { "$ref": "#/$defs/source_read" }
+    },
     "email_coverage": {
       "type": "object",
       "properties": {
@@ -69,6 +94,23 @@
       "additionalProperties": true
     },
     "source_gaps": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "source_read": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "source": {
+          "enum": ["salesforce", "gmail", "email", "google_calendar", "calendar", "zoom", "calls_zoom", "slack", "google_drive", "drive"]
+        },
+        "status": { "enum": ["ok", "empty", "timeout", "error", "partial", "skipped"] },
+        "queries": { "type": "array", "items": { "type": "string" } },
+        "source_refs": { "type": "array", "items": { "type": "string" } },
+        "retries": { "type": "integer", "minimum": 0 },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
   },
   "additionalProperties": true
 }

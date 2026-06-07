@@ -18,6 +18,8 @@ Source ownership:
 
 Coverage proof rules:
 - Missing or incomplete connector reads are coverage gaps, not negative account claims.
+- Active bundles must carry `coverage_manifest` / `source_reads` for the expected profile sources emitted by `plan.py`.
+- Missing expected source-read proof hard-fails before analysis; degraded source statuses become coverage gaps.
 - Gmail absence/recency claims require company-domain search proof and either the newest matching company-domain thread id or `domain_thread_search_status=no_match`.
 - Slack absence/activity claims require Slack MCP proof: `slack_mcp_checked`, searched channels, channel matches, and a Slack-source deal-room reference when found.
 - Do not cite Salesforce as evidence for Slack room existence, Slack activity, or Slack absence.

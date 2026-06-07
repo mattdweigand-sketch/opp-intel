@@ -66,6 +66,15 @@ def main():
     ok &= check("coverage rules: cross-source substitution disabled",
                 contracts["coverage_rules"]["cross_source_substitution_allowed"] is False
                 and contracts["coverage_rules"]["missing_connector_read"] == "coverage_gap")
+    manifest = contracts["coverage_manifest"]
+    ok &= check("coverage manifest: deal expected sources include Slack and Gmail",
+                "gmail" in manifest["expected_sources_by_profile"]["deal"]
+                and "slack" in manifest["expected_sources_by_profile"]["deal"])
+    ok &= check("coverage manifest: hygiene expected sources are Salesforce only",
+                manifest["expected_sources_by_profile"]["hygiene"] == ["salesforce"])
+    ok &= check("coverage manifest: missing proof hard fails before analysis",
+                manifest["missing_expected_source"] == "hard_fail_before_analysis"
+                and manifest["clean_source_without_required_proof"] == "hard_fail_before_analysis")
     ok &= check("calendar source contract", contracts["sources"]["calendar"]["profiles"] == ["deal", "pipeline"])
     ok &= check("connector status aliases documented",
                 "gmail" in contracts["sources"]["gmail"]["status_key_aliases"]

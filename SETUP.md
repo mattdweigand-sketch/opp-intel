@@ -47,6 +47,7 @@ Required connectors:
 All source access should remain read-only. `deal-read` may only create a Gmail draft after explicit confirmation.
 If Google Calendar is unavailable, the repo records a source gap instead of creating Calendar risk flags.
 If Gmail or Slack coverage proof is missing, the repo records a coverage gap instead of allowing "no email" or "no Slack room" claims.
+Each active gather also records `source_reads` for the sources `plan.py` expected. Missing expected source-read proof fails before analysis; `timeout`, `error`, and `partial` statuses flow through as coverage gaps.
 
 If Claude skills live somewhere else on your machine, set `CLAUDE_SKILLS_DIR`:
 

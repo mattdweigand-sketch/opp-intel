@@ -58,6 +58,24 @@ def source_contract_summary(contracts, source_names):
     return out
 
 
+def coverage_manifest_contract(contracts, profile, source_names):
+    cfg = contracts.get("coverage_manifest", {})
+    return {
+        "required": True,
+        "profile": profile,
+        "bundle_field": cfg.get("bundle_fields", {}).get("manifest", "coverage_manifest"),
+        "source_reads_bundle_field": cfg.get("bundle_fields", {}).get("source_reads", "source_reads"),
+        "expected_sources": source_names,
+        "source_read_statuses": cfg.get("source_read_statuses", []),
+        "clean_statuses": cfg.get("clean_statuses", []),
+        "degraded_statuses": cfg.get("degraded_statuses", []),
+        "missing_expected_source": cfg.get("missing_expected_source"),
+        "clean_source_without_required_proof": cfg.get("clean_source_without_required_proof"),
+        "degraded_source": cfg.get("degraded_source"),
+        "connector_status_mapping": cfg.get("connector_status_mapping", {}),
+    }
+
+
 def source_requirement(contracts, name):
     cfg = (contracts.get("source_ownership") or {}).get(name, {})
     return {
@@ -450,6 +468,10 @@ def pipeline_plan(ctx):
         source_names += ["slack", "google_drive"]
 
     out = {"salesforce": {}, "window": window,
+           "profile": "hygiene" if hygiene else "pipeline",
+           "coverage_manifest": coverage_manifest_contract(
+               contracts, "hygiene" if hygiene else "pipeline", source_names
+           ),
            "source_contract": source_contract_summary(contracts, source_names),
            "large_run_threshold": pipe_cfg.get("large_run_threshold", 15),
            "per_deal_connectors": per_deal_connectors}
@@ -628,18 +650,20 @@ def deal_plan(ctx, profile="pipeline"):
             "include_zoom_my_notes": True,
         }
 
+    source_names = ["salesforce", "gmail", "google_calendar", "zoom"]
+    internal = internal_plan(ctx, fields, model, profile=profile)
+    if internal:
+        source_names.extend(["slack", "google_drive"])
     out = {
-        "source_contract": source_contract_summary(
-            contracts,
-            ["salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"],
-        ),
+        "profile": profile,
+        "coverage_manifest": coverage_manifest_contract(contracts, profile, source_names),
+        "source_contract": source_contract_summary(contracts, source_names),
         "salesforce": sf,
         "gmail": gmail,
         "zoom": zoom,
     }
     if calendar:
         out["calendar"] = calendar
-    internal = internal_plan(ctx, fields, model, profile=profile)
     if internal:
         out["internal_evidence"] = internal
     return out

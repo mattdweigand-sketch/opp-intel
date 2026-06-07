@@ -20,6 +20,16 @@ def main():
     props = schema["properties"]
     ok = True
 
+    ok &= check("manifest schema: coverage_manifest present", "coverage_manifest" in props)
+    ok &= check("manifest schema: source_reads present", "source_reads" in props)
+    source_read = schema["$defs"]["source_read"]["properties"]
+    ok &= check("manifest schema: status enum present",
+                {"ok", "empty", "timeout", "error", "partial", "skipped"}.issubset(
+                    set(source_read["status"]["enum"])
+                ))
+    ok &= check("manifest schema: source enum includes Slack MCP source",
+                "slack" in source_read["source"]["enum"])
+
     email = props["email_coverage"]["properties"]
     ok &= check("email schema: searched_domains present", "searched_domains" in email)
     ok &= check("email schema: contact_domains present", "contact_domains" in email)

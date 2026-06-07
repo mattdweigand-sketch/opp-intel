@@ -126,8 +126,35 @@
     "clean_negative_requires_successful_connector_read": true,
     "cross_source_substitution_allowed": false
   },
+  "coverage_manifest": {
+    "purpose": "Structured proof of which connectors were expected, attempted, retried, and read for one evidence bundle. Active deal and pipeline bundles should set coverage_manifest.required=true or profile=deal|pipeline|hygiene and include source_reads before analyze.py runs.",
+    "bundle_fields": {
+      "profile": "profile",
+      "manifest": "coverage_manifest",
+      "source_reads": "source_reads"
+    },
+    "expected_sources_by_profile": {
+      "deal": ["salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"],
+      "pipeline": ["salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"],
+      "hygiene": ["salesforce"]
+    },
+    "source_read_statuses": ["ok", "empty", "timeout", "error", "partial", "skipped"],
+    "clean_statuses": ["ok", "empty"],
+    "degraded_statuses": ["timeout", "error", "partial"],
+    "missing_expected_source": "hard_fail_before_analysis",
+    "clean_source_without_required_proof": "hard_fail_before_analysis",
+    "degraded_source": "coverage_gap_not_negative_claim",
+    "connector_status_mapping": {
+      "gmail": "email",
+      "google_calendar": "calendar",
+      "zoom": "zoom",
+      "salesforce": "salesforce",
+      "slack": "slack",
+      "google_drive": "drive"
+    }
+  },
   "execution_status": {
-    "purpose": "Per-source execution status the gather step reports back per deal, so a connector that did not run cleanly cannot be read as a clean negative finding.",
+    "purpose": "Per-source execution status normalized from source_reads per deal, so a connector that did not run cleanly cannot be read as a clean negative finding.",
     "allowed_values": ["ok", "empty", "timeout", "error", "partial"],
     "value_semantics": {
       "ok": "Connector ran and returned data; negatives are trustworthy.",
@@ -140,8 +167,8 @@
     "clean_negative_rule": "A clean negative finding (no reply, went quiet, single-threaded from observed participants) may only be asserted from a connector whose status is ok or empty. A degraded connector (timeout/error/partial) yields a coverage gap, never a finding.",
     "coverage_gap_emission": "compute.py appends `<source>_connector_degraded` to coverage_gaps for each degraded connector. Coverage gaps are NOT risk flags and never feed ranking or severity.",
     "email_degraded_neutralization": "When email is degraded, compute.py nulls days_since_last_inbound and unanswered_rep_emails, forces email_data_stale to False, and suppresses single_threaded unless it is independently supported by the Salesforce-sourced logged_contact_roles.",
-    "retry_expectation": "The gather step must retry a timeout/error connector up to 2 times before reporting it degraded. Report the final status (ok/empty/timeout/error/partial) in the bundle.",
-    "absent_status": "An absent or unrecognized status is treated as NOT degraded (no coverage gap, no neutralization), preserving backward compatibility with snapshots that omit connector_status."
+    "retry_expectation": "The gather step must retry a timeout/error connector up to 2 times before reporting it degraded. Report the final status (ok/empty/timeout/error/partial) in source_reads.",
+    "absent_status": "Legacy snapshots that omit source_reads/connector_status are treated as not degraded. Active bundles with profile or coverage_manifest.required=true must include source_reads and fail before analysis if expected source proof is missing."
   },
   "sources": {
     "salesforce": {

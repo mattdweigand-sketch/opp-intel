@@ -37,6 +37,13 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
+    ok &= check("pipeline: coverage manifest required",
+                p1["coverage_manifest"]["required"] is True
+                and p1["coverage_manifest"]["profile"] == "pipeline")
+    ok &= check("pipeline: manifest follows connector list",
+                p1["coverage_manifest"]["expected_sources"] == [
+                    "salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"
+                ])
     ok &= check("pipeline: read default runs Calendar and Slack/Drive",
                 p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
     ok &= check("pipeline: source contract maps Salesforce to Salesforce",
@@ -109,6 +116,10 @@ def main():
                 "Slack_Channel__c" not in poff["salesforce"]["pipeline"])
     ok &= check("internal off: connectors exclude Slack/Drive but keep Calendar",
                 poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom"])
+    ok &= check("internal off: manifest excludes Slack/Drive",
+                poff["coverage_manifest"]["expected_sources"] == [
+                    "salesforce", "gmail", "google_calendar", "zoom"
+                ])
     ok &= check("internal off: source contract excludes Slack/Drive",
                 "slack" not in poff["source_contract"]["source_of_truth"]
                 and "google_drive" not in poff["source_contract"]["source_of_truth"])

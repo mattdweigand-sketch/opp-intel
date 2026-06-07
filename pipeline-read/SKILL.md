@@ -95,14 +95,15 @@ pipeline aggregation, once over all deals).
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
   emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus Slack channel/linked-doc instructions when
-  enabled, plus the `source_contract` and connector-specific coverage requirements. You execute what it
-  prints; you never improvise SOQL, Gmail recency/thread searches, or broad Slack/Drive search. In a
+  enabled, plus the `source_contract`, connector-specific coverage requirements, and
+  `coverage_manifest.expected_sources`. You execute what it prints; you never improvise SOQL, Gmail
+  recency/thread searches, or broad Slack/Drive search. In a
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
   batched `contact_roles_bulk` query and the `champion_roles` list.
 - **`scripts/analyze.py`** — the per-deal processing entrypoint. Feed it one
-  deal's bundle; it runs `compute.py` + `callstats.py` and parses account history. Run it once per
-  in-scope deal.
+  deal's bundle; it validates `coverage_manifest` / `source_reads`, then runs `compute.py` +
+  `callstats.py` and parses account history. Run it once per in-scope deal.
 - **`scripts/rollup.py`** — the pipeline aggregator. Feed it every per-deal `analyze.py` output; it
   ranks deals by severity of current evidence, computes portfolio and forecast aggregates, emits
   deterministic recommendation labels, and compares against a prior Computed inputs artifact when
@@ -184,7 +185,9 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    transcript bodies). Do **not** read Zoom transcripts to produce the read; that belongs in
    `/deal-read`.
 3. Build the per-deal bundle and run
-   `python3 <skill-dir>/scripts/analyze.py < bundle.json` once per deal. For `compute_input`, pass
+   `python3 <skill-dir>/scripts/analyze.py < bundle.json` once per deal. Include `"profile":"pipeline"`,
+   the per-deal `coverage_manifest` from `plan.py`, and `source_reads` for every expected source with
+   status `ok`, `empty`, `timeout`, `error`, or `partial`. For `compute_input`, pass
    `observed_participants` and `logged_contact_roles` (not a pre-counted contact total),
    `stage_entered_date`, `close_date_history`, and `latest_call_date` when available — same contract as
    `deal-read`. Keep each deal's `analyze.py` output; you feed them all to `rollup.py` next.
@@ -218,12 +221,10 @@ gather must distinguish "this source ran and found nothing" from "this source di
 requirements bind every per-deal subagent:
 1. **Retry transient failures.** When a connector (Salesforce, Gmail, Calendar, Zoom) times out or
    errors, retry it up to **2 times** before giving up. Only mark it degraded after the retries fail.
-2. **Report `connector_status` in the returned bundle.** Add a `connector_status` object to the
-   per-deal `compute_input` with one entry per source — `email`, `zoom`, `calendar`, `salesforce` —
-   set to `"ok"` (ran, returned data), `"empty"` (ran cleanly, genuinely found nothing), or
-   `"timeout"`/`"error"`/`"partial"` (degraded after retries). Absent or unrecognized is treated as not
-   degraded. `compute.py` reads this and appends `<source>_connector_degraded` to `coverage_gaps`, which
-   carries confidence/blindness downstream and never enters ranking.
+2. **Report `source_reads` in the returned bundle.** Add one read record per expected source from
+   `coverage_manifest.expected_sources`. Each record names the source, final status, retry count,
+   query/query family, and source refs where available. `analyze.py` converts these into normalized
+   connector status for `compute.py`; missing expected source proof hard-fails before analysis.
 3. **Do not assert absence-based claims from a degraded connector.** A single-thread call, a "no reply"
    or "went quiet" read, or any negative finding may only stand when the source it relies on ran
    cleanly (`ok` or `empty`). If the connector that would witness the finding was degraded, it becomes a
@@ -263,7 +264,8 @@ scan is the §1 portfolio list plus one batched contact-roles query:
 3. For each opp, run `python3 <skill-dir>/scripts/analyze.py < bundle.json` with a light hygiene bundle
    (no transcript, no emails, no internal evidence):
    ```json
-   {"compute_input": {"today": "<today>", "hygiene": true,
+   {"profile": "hygiene", "coverage_manifest": <from hygiene plan>, "source_reads": {"salesforce": {"status": "ok"}},
+    "compute_input": {"today": "<today>", "hygiene": true,
      "opportunity": {"close_date": "<CloseDate>", "last_activity_date": "<LastActivityDate>"},
      "logged_contact_roles": <N>, "champion_contact_roles": <M>, "next_step": "<NextStep or empty>"}}
    ```

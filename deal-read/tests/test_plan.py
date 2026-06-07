@@ -37,6 +37,12 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
+    ok &= check("coverage manifest: deal profile required",
+                full["coverage_manifest"]["required"] is True
+                and full["coverage_manifest"]["profile"] == "deal")
+    ok &= check("coverage manifest: deal expected sources include Gmail and Slack",
+                "gmail" in full["coverage_manifest"]["expected_sources"]
+                and "slack" in full["coverage_manifest"]["expected_sources"])
     # The bug guard: Added ARR is Added ARR only, with no non-Added-ARR money fallback.
     ok &= check("opp query uses Added_ARR__c", "Added_ARR__c" in opp)
     ok &= check("opp query has no non-Added-ARR money field",
@@ -112,6 +118,9 @@ def main():
     disabled = run({"account_name": "Providence Investments", "internal": "off"})
     ok &= check("internal off: no internal evidence emitted",
                 "internal_evidence" not in disabled)
+    ok &= check("internal off: manifest excludes Slack and Drive",
+                "slack" not in disabled["coverage_manifest"]["expected_sources"]
+                and "google_drive" not in disabled["coverage_manifest"]["expected_sources"])
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

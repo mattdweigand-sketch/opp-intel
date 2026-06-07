@@ -98,6 +98,8 @@ The source boundary is intentional and lives in `core/config/source-contracts.js
 
 Source boundaries are enforced by bundle metadata and validators, not prompt wording.
 
+- Every active `deal` / `pipeline` / `hygiene` bundle carries a coverage manifest. `plan.py` emits the expected source list for the selected profile, the gather step fills `source_reads`, and `analyze.py` fails before analysis if an expected source read is missing.
+- Each `source_reads` entry records the connector source, final status (`ok`, `empty`, `timeout`, `error`, or `partial`), retries, queries, and source refs where available. Degraded statuses become coverage gaps; missing proof is a gather failure.
 - Gmail coverage must prove company-domain search. The bundle records searched contact emails, contact-union emails, searched domains, contact domains, and either the newest matching company-domain thread id or `domain_thread_search_status=no_match`.
 - Slack coverage must prove a Slack MCP read. The bundle records `slack_mcp_checked`, searched channel names, channel matches, and the Slack-source `deal_room.source_ref`.
 - A missing Gmail/Slack proof becomes a coverage gap. It cannot become "no email thread," "email went quiet," "no Slack room," or "no Slack activity."

@@ -55,10 +55,12 @@ Gmail draft policy.
   names come from `../core/config/sf-fields.json`, the email window from `../core/config/risk-model.json`,
   and source ownership from `../core/config/source-contracts.json`. You execute what it prints (only you
   can call the connectors), but you never improvise SOQL, Gmail domain/thread searches, or Slack lookup.
+  It also emits `coverage_manifest.expected_sources`; fill `source_reads` for those exact sources in the
+  `analyze.py` bundle.
 - **`scripts/analyze.py`** — the single processing entrypoint. Feed it one bundle of the raw data you
-  gathered; it runs `compute.py` + `callstats.py`, parses account history, and normalizes Slack/Drive
-  internal evidence, returning every metric, flag, source gap, and the prior-loss summary. Do not
-  stitch these yourself.
+  gathered; it first validates `coverage_manifest` / `source_reads`, then runs `compute.py` +
+  `callstats.py`, parses account history, and normalizes Slack/Drive internal evidence, returning every
+  metric, flag, source gap, and the prior-loss summary. Do not stitch these yourself.
 - **`../core/config/risk-model.json`** — chosen framework: scored dimensions, status enum, thresholds,
   discovery checklist. To change the model, edit this file.
 - **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping. To retarget another org, edit this.
@@ -168,8 +170,13 @@ confidence, source gaps, risk notes, and next-move wording. It cannot override S
 
 **First, run `analyze.py` once.** Assemble the bundle and pipe it in:
 `python3 <skill-dir>/scripts/analyze.py < bundle.json`. The bundle is:
-`{"rep_name", "compute_input": {...}, "transcript_file": "<path or omit>", "prior_opps": [...],
-"calendar_evidence": {...}, "email_coverage": {...}, "internal_evidence": {...}, "connector_status": {...}}`.
+`{"profile":"deal", "coverage_manifest": <from plan.py>, "source_reads": {...}, "rep_name",
+"compute_input": {...}, "transcript_file": "<path or omit>", "prior_opps": [...],
+"calendar_evidence": {...}, "email_coverage": {...}, "internal_evidence": {...}}`.
+`source_reads` must include every expected source from `coverage_manifest.expected_sources`, with
+`status` set to `ok`, `empty`, `timeout`, `error`, or `partial`, plus retries, queries, and source refs
+when available. A missing expected source hard-fails before analysis; degraded statuses become coverage
+gaps and cannot support absence claims.
 For `compute_input`, do NOT pre-count `contacts_engaged` yourself. Pass `observed_participants` (the list
 of prospect-side people you saw: Zoom attendees and email senders/recipients on the prospect's domain)
 and `logged_contact_roles` (the count from `getRelatedRecords`). `compute.py` dedups the list and applies

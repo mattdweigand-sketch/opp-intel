@@ -21,6 +21,8 @@ import os
 import subprocess
 import sys
 
+from coverage_manifest import validate_bundle_coverage
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -199,13 +201,20 @@ def first_list(*values):
 
 def main():
     bundle = json.load(sys.stdin)
+    try:
+        coverage_manifest = validate_bundle_coverage(bundle)
+    except ValueError as e:
+        sys.stderr.write(str(e) + "\n")
+        sys.exit(1)
 
     calendar_evidence = normalize_calendar_evidence(bundle.get("calendar_evidence"))
     compute_input = dict(bundle.get("compute_input") or {})
     if calendar_evidence and "calendar_evidence" not in compute_input:
         compute_input["calendar_evidence"] = calendar_evidence
-    if bundle.get("connector_status") and "connector_status" not in compute_input:
-        compute_input["connector_status"] = bundle.get("connector_status")
+    connector_status = dict(coverage_manifest.get("connector_status") or {})
+    connector_status.update(bundle.get("connector_status") or {})
+    if connector_status and "connector_status" not in compute_input:
+        compute_input["connector_status"] = connector_status
     if bundle.get("email_coverage") and "email_coverage" not in compute_input:
         compute_input["email_coverage"] = bundle.get("email_coverage")
     deal_metrics = run_script("compute.py", stdin_obj=compute_input)
@@ -221,6 +230,7 @@ def main():
         "account_history": account_history(bundle.get("prior_opps")),
         "calendar_evidence": calendar_evidence,
         "internal_evidence": normalize_internal_evidence(bundle.get("internal_evidence")),
+        "coverage_manifest": coverage_manifest,
     }
     json.dump(out, sys.stdout, indent=2)
     sys.stdout.write("\n")

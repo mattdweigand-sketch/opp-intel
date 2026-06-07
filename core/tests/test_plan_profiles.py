@@ -54,6 +54,9 @@ def main():
 
     hygiene = run_plan({"mode": "pipeline", "hygiene": True, "today": "2026-06-04", "owner_id": "005XX"})
     ok &= check("hygiene plan: Salesforce only", hygiene["per_deal_connectors"] == ["Salesforce"])
+    ok &= check("hygiene manifest: Salesforce only",
+                hygiene["coverage_manifest"]["profile"] == "hygiene"
+                and hygiene["coverage_manifest"]["expected_sources"] == ["salesforce"])
 
     zoom = load_adapter("calls_zoom")
     gong = load_adapter("calls_gong")
