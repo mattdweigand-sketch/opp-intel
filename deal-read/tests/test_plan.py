@@ -36,13 +36,18 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    # The bug guard: real ACV field present, no bare standalone "Amount" field.
+    # The bug guard: ACV is Added ARR only, with no non-Added-ARR money fallback.
     ok &= check("opp query uses Added_ARR__c", "Added_ARR__c" in opp)
-    ok &= check("opp query has no bare Amount field", ", Amount," not in opp and "(Amount," not in opp)
+    ok &= check("opp query has no non-Added-ARR money field",
+                "Calculated_ACV__c" not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
     ok &= check("gmail thread_search uses emails", "a@x.com" in full["gmail"]["thread_search"])
+    ok &= check("gmail domain search emitted",
+                full["gmail"]["domain_thread_search"] == "from:(x.com) OR to:(x.com) newer_than:90d")
+    ok &= check("gmail newest domain thread required",
+                full["gmail"]["most_recent_thread_search"]["sort"] == "newest_first")
     ok &= check("calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("calendar uses attendees", "a@x.com" in full["calendar"]["query"]["attendees"])
     ok &= check("calendar has future lookup", full["calendar"]["future"]["to"] == "next 60 days")
@@ -67,17 +72,16 @@ def main():
     ok &= check("deal surface: pipeline mode rejected",
                 blocked.returncode != 0 and "does not emit pipeline" in blocked.stderr)
 
-    # Internal evidence (Slack + Drive) — auto is mapped-room only; force permits fallback.
+    # Internal evidence (Slack + Drive) — auto can search channel names; force permits
+    # message-body fallback.
     auto = run({"account_name": "Providence Investments"})
-    ok &= check("internal auto: no room reports source gap",
-                auto["internal_evidence"]["coverage"] == "deal_room_missing")
+    ok &= check("internal auto: channel-name lookup emitted",
+                auto["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
     ok &= check("internal auto: broad search not allowed",
-                auto["internal_evidence"]["broad_search_allowed"] is False)
-    mapped = run({"account_name": "Providence Investments", "slack_deal_room": "C123"})
-    ok &= check("internal auto: mapped room emitted",
-                mapped["internal_evidence"]["slack"]["query_type"] == "mapped_deal_room")
-    ok &= check("internal auto: linked docs emitted",
-                mapped["internal_evidence"]["linked_docs"]["source"] == "google_drive")
+                auto["internal_evidence"]["broad_search_allowed"] is False
+                and auto["internal_evidence"]["slack"]["broad_search_allowed"] is False)
+    ok &= check("internal auto: Providence hyphen channel variant emitted",
+                "providence-investments" in auto["internal_evidence"]["slack"]["terms"])
     forced = run({"account_name": "Providence Investments", "internal": "force"})
     ok &= check("internal force: bounded fallback lookup emitted",
                 forced["internal_evidence"]["slack"]["query_type"] == "bounded_fallback_lookup")

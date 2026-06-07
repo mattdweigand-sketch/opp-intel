@@ -6,9 +6,9 @@ PROFILES = {"deal", "pipeline"}
 
 def plan(profile):
     if profile == "deal":
-        return {"source": SOURCE, "mode": "mapped_room_default", "max_messages": 80}
+        return {"source": SOURCE, "mode": "channel_name_lookup_default", "max_messages": 80}
     if profile == "pipeline":
-        return {"source": SOURCE, "mode": "mapped_room_default", "max_messages": 40}
+        return {"source": SOURCE, "mode": "channel_name_lookup_default", "max_messages": 40}
     raise ValueError(f"slack is off for profile: {profile}")
 
 

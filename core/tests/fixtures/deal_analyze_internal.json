@@ -86,7 +86,9 @@
         "count_in": 0,
         "days_since_last_inbound": null,
         "unanswered_rep_emails": 0,
-        "median_response_latency_days": null
+        "median_response_latency_days": null,
+        "latest_sent_probe_date": null,
+        "searched_domains": []
       },
       "calendar": {
         "coverage": "available",

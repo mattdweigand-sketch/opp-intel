@@ -20,8 +20,7 @@ them. Field names come from sf-fields.json, windows from risk-model.json.
 Usage: python3 plan.py            # reads context JSON on stdin, prints the query plan
 Per-deal context keys (all optional — emit what the inputs allow):
   {"deal_name","opp_id","account_id","account_name","contact_emails":[...],
-   "created_date","today","internal":"auto|off|force","Slack_Channel__c":"C...",
-   "Deal_Room_URL__c":"https://..."}
+   "created_date","today","internal":"auto|off|force"}
 """
 import json
 import os
@@ -41,10 +40,69 @@ def dedupe(items):
     out = []
     seen = set()
     for item in items:
-        if item and item not in seen:
-            out.append(item)
-            seen.add(item)
+        if item is None:
+            continue
+        key = str(item).strip()
+        if key and key not in seen:
+            out.append(key)
+            seen.add(key)
     return out
+
+
+def slack_lookup_terms(values, max_terms=12):
+    """Deterministic Slack channel-name terms.
+
+    This is intentionally channel-name only. It broadens "NW1" to "nwl" and
+    normalizes punctuation, but does not search message bodies unless internal
+    evidence is explicitly forced.
+    """
+    candidates = []
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in raw)
+        spaced = " ".join(cleaned.split())
+        compact = "".join(spaced.split())
+        dashed = "-".join(spaced.split())
+        underscored = "_".join(spaced.split())
+        tokens = [tok for tok in spaced.split() if len(tok) >= 3 or any(ch.isdigit() for ch in tok)]
+        for term in [raw, spaced, compact, dashed, underscored, *tokens]:
+            if term:
+                candidates.append(term)
+                if "1" in term:
+                    candidates.append(term.replace("1", "l"))
+                if "0" in term:
+                    candidates.append(term.replace("0", "o"))
+    return dedupe(candidates)[:max_terms]
+
+
+PUBLIC_EMAIL_DOMAINS = {
+    "aol.com",
+    "gmail.com",
+    "googlemail.com",
+    "hotmail.com",
+    "icloud.com",
+    "live.com",
+    "me.com",
+    "msn.com",
+    "outlook.com",
+    "proton.me",
+    "protonmail.com",
+    "yahoo.com",
+}
+
+
+def company_domains_from_emails(emails):
+    domains = []
+    for email in emails or []:
+        raw = str(email or "").strip().lower()
+        if "@" not in raw:
+            continue
+        domain = raw.rsplit("@", 1)[1].strip(" >)")
+        if domain and domain not in PUBLIC_EMAIL_DOMAINS:
+            domains.append(domain)
+    return dedupe(domains)
 
 
 def parse(d):
@@ -160,40 +218,50 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
     slack_profile = profile_cfg.get("slack", {}) if isinstance(profile_cfg.get("slack"), dict) else {}
     drive_profile = profile_cfg.get("drive", {}) if isinstance(profile_cfg.get("drive"), dict) else {}
     source_cfg = fields.get("internal_sources", {})
-    room_cfg = source_cfg.get("slack_deal_room", {})
     doc_cfg = source_cfg.get("linked_docs", {})
-    mapping_fields = room_cfg.get("mapping_fields", [])
-
-    room = (
-        ctx.get("slack_deal_room")
-        or ctx.get("Slack_Channel__c")
-        or ctx.get("Deal_Room_URL__c")
-        or ctx.get("deal_room_url")
-    )
     account_or_deal = dedupe([
         ctx.get("account_name"),
         ctx.get("deal_name"),
         ctx.get("opportunity_name"),
         *([str(h) for h in ctx.get("internal_hints", [])] if ctx.get("internal_hints") else []),
     ])
+    channel_terms = slack_lookup_terms(account_or_deal)
 
     out = {
         "mode": mode,
         "window_days": int(ctx.get("internal_window") or cfg.get("default_window_days", 30)),
-        "mapping_fields": mapping_fields,
+        "mapping_fields": [],
         "max_messages": slack_profile.get("max_messages", cfg.get("max_messages_per_room", 80)),
         "max_linked_docs": drive_profile.get("max_docs", cfg.get("max_linked_docs_per_room", 5)),
         "signals": cfg.get("signals", []),
         "broad_search_allowed": mode == "force",
     }
 
-    if room:
+    if mode == "auto" and not channel_terms:
+        out["coverage"] = "deal_room_missing"
+        out["source_gaps"] = ["deal_room_missing"]
+        return out
+
+    if mode == "auto":
         out["slack"] = {
-            "query_type": "mapped_deal_room",
-            "room": room,
-            "read": ["recent_messages", "pinned_items", "bookmarks"],
+            "query_type": "channel_name_lookup",
+            "steps": [
+                {
+                    "step": 1,
+                    "action": "slack_search_channels",
+                    "terms": channel_terms,
+                    "channel_types": "public_channel,private_channel",
+                    "on_match": (
+                        "read up to max_messages from the matched channel; set "
+                        "deal_room.coverage=found and source_ref to the channel id"
+                    ),
+                    "on_no_match": "set deal_room.coverage=checked_no_match; no message-body search",
+                },
+            ],
+            "terms": channel_terms,
             "max_messages": out["max_messages"],
             "broad_search_allowed": False,
+            "requires_internal_force": False,
         }
         out["linked_docs"] = {
             "source": "google_drive",
@@ -204,18 +272,13 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         }
         return out
 
-    if mode == "auto":
-        out["coverage"] = "deal_room_missing"
-        out["source_gaps"] = ["deal_room_missing"]
-        return out
-
     out["slack"] = {
         "query_type": "bounded_fallback_lookup",
         "steps": [
             {
                 "step": 1,
                 "action": "slack_search_channels",
-                "terms": account_or_deal,
+                "terms": channel_terms,
                 "channel_types": "public_channel,private_channel",
                 "on_match": "read up to max_messages from the matched channel; set coverage=found; skip step 2",
                 "on_no_match": "proceed to step 2",
@@ -229,7 +292,7 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
                 "on_no_match": "set coverage=checked_no_match; no signals",
             },
         ],
-        "terms": account_or_deal,
+        "terms": channel_terms,
         "window_days": out["window_days"],
         "max_messages": out["max_messages"],
         "broad_search_allowed": True,
@@ -348,7 +411,7 @@ def pipeline_plan(ctx):
     if forecast:
         select.extend([forecast.get("amount_field"), forecast.get("forecast_category_field")])
     if internal:
-        select.extend(fields.get("internal_sources", {}).get("slack_deal_room", {}).get("mapping_fields", []))
+        select.extend(fields.get("internal_sources", {}).get("slack", {}).get("mapping_fields", []))
     select = dedupe(select)
 
     owner_id = ctx.get("owner_id")
@@ -425,11 +488,24 @@ def deal_plan(ctx, profile="pipeline"):
     if emails:
         ors = " OR ".join(emails)
         gmail["thread_search"] = f"from:({ors}) OR to:({ors}) newer_than:{window}d"
+        domains = company_domains_from_emails(emails)
+        if domains:
+            domain_clause = " OR ".join(domains)
+            gmail["domain_thread_search"] = (
+                f"from:({domain_clause}) OR to:({domain_clause}) newer_than:{window}d"
+            )
+            gmail["most_recent_thread_search"] = {
+                "query": gmail["domain_thread_search"],
+                "sort": "newest_first",
+                "read": "get_thread on the most recent matching thread",
+            }
     if profile == "pipeline":
         gmail["_note"] = (
             "After running account_contacts and contact_roles, union all non-null Email values "
-            "and re-run thread_search: from:(<emails>) OR to:(<emails>) newer_than:{window}d. "
-            "Read full thread bodies, not metadata only."
+            "and derive company domains from those addresses. Re-run thread_search for the exact "
+            "addresses and domain_thread_search for any email from those company domains: "
+            "from:(<domains>) OR to:(<domains>) newer_than:{window}d. Read full thread bodies, "
+            "not metadata only, and always read get_thread on the most recent matching domain thread."
         ).replace("{window}", str(window))
 
     # Workflow-tool inbox sweep: internal SaaS notifications (CLM, NDA/legal, call intel,

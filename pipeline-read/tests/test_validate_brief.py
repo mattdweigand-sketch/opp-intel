@@ -98,6 +98,12 @@ def main():
                   "Computed inputs:\n" + gap_footer())
     ok &= check("High + coverage gap fails", rc == 1 and "coverage gap" in out.lower())
 
+    rc, out = run("Confidence: Medium, partial coverage.\n\n"
+                  "Where you're blind: Acme email thread search under-collected.\n\n"
+                  "Acme has no rep outbound since Apr 21.\n\nComputed inputs:\n" + gap_footer())
+    ok &= check("coverage gap blocks absence-based email claim",
+                rc == 1 and "absence-based email claim" in out)
+
     # NW1 anchor guard: a deal flagged email_data_stale must cite its last_touch date.
     def stale_anchor_footer(last_touch="2026-05-26"):
         obj = {

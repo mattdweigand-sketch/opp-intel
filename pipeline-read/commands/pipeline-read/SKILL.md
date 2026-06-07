@@ -1,6 +1,6 @@
 ---
 name: pipeline-read
-description: Ranked forecast-risk read across a rep's whole pipeline - riskiest deals first, each with its dominant risk (cited) and the single next move, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in read mode. Trigger on "/pipeline-read", "/pipeline-read --next-quarter", "read my pipeline", "which of my deals are most at risk", "what should I work this week across my deals". For the forecast-call view (the number, category rollup, keep/downgrade labels, movement vs a prior snapshot) use /pipeline-forecast instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
+description: Ranked forecast-risk read across a rep's whole pipeline - riskiest deals first, each with its dominant risk (cited) and the single next move, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in read mode. Trigger on "/pipeline-read", "/pipeline-read --next-quarter", "read my pipeline", "which of my deals are most at risk", "what should I work this week across my deals". For the forecast-call view (the number, category rollup, keep/downgrade labels, movement vs a prior snapshot) use /pipeline-forecast instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, Slack channel deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
 ---
 
 # Pipeline Read
@@ -25,7 +25,7 @@ Thin command frontend. The engine, shared config, and full pipeline live in this
 
 `/pipeline-read` runs the current fiscal quarter. `--next-quarter` / `--window current_quarter|next_quarter|30d`
 choose the window. `--internal auto|off|force` and `--internal-window 30d` tune internal evidence
-(default is `auto`: mapped rooms and linked docs only). The forecast-only knobs (`--posture`,
+(default is `auto`: Slack channel-name lookup and linked docs only). The forecast-only knobs (`--posture`,
 `--amount-basis`, `--compare`) belong to `/pipeline-forecast`; if asked for those, route there.
 
 ## Hand off

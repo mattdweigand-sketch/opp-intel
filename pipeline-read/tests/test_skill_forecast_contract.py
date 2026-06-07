@@ -20,7 +20,7 @@ def main():
         "--posture conservative|defend-commit|identify-upside",
         "--next-quarter",
         "--window current_quarter|next_quarter|30d",
-        "--amount-basis acv|crm-primary-amount",
+        "--amount-basis acv",
         "--compare <prior-computed-inputs.json>",
         "--internal auto|off|force",
         "Slack",
@@ -45,8 +45,8 @@ def main():
 
     ok &= check("SKILL no longer describes forecast as only forecast-realism",
                 "forecast-realism view" not in text)
-    ok &= check("SKILL routes broad internal lookup through force",
-                "Broad Slack or Drive lookup is allowed only under `internal=force`" in text)
+    ok &= check("SKILL routes broad Slack message lookup through force",
+                "Broad Slack message-body lookup is allowed only under `internal=force`" in text)
     ok &= check("SKILL does not advertise removed /pipeline-triage command",
                 "/pipeline-triage" not in text
                 and "pipeline-triage" not in text)

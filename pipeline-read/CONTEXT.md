@@ -29,13 +29,13 @@ read `AGENTS.md`, then this file, then the `SKILL.md` section for the task.
 | Change the fiscal close calendar, close window, or flag-severity tiers | Core config | `../core/config/risk-model.json` (`pipeline` block) |
 | Change forecast posture labels or internal-evidence caps | Core config | `../core/config/risk-model.json` (`forecast`, `internal_evidence`) |
 | Retarget a new Salesforce org | Core config | `../core/config/sf-fields.json` |
-| Change amount basis, forecast category convention, or Slack room mapping fields | Core config | `../core/config/sf-fields.json` |
+| Change the ACV source or forecast category convention | Core config | `../core/config/sf-fields.json` |
 | Change the risk model | Core config | `../core/config/risk-model.json` |
 | Verify a change broke nothing | Test | `python3 tests/test_*.py` |
 
 The pipeline is identical across read and forecast: resolve the rep's in-scope opps for JSQ's current
 fiscal quarter by default, or next fiscal quarter when requested, gather
-Salesforce + Gmail + Google Calendar + Zoom per deal, add bounded mapped Slack/linked proposal-doc evidence by default
+Salesforce + Gmail + Google Calendar + Zoom per deal, add Slack channel-name lookup and linked proposal-doc evidence by default
 (unless `--internal off`), run `scripts/plan.py` for the queries and `scripts/analyze.py` per deal,
 then `scripts/rollup.py` over all of them. Read leads with the riskiest deals overall. Forecast leads
 with posture, category rollup, recommendation labels, movement from a prior Computed inputs artifact

@@ -1,6 +1,6 @@
 # Deal Read
 
-Deal-risk coaching for a single sales opportunity. Deal Read synthesizes a rep's own Salesforce data, Gmail threads, Google Calendar meetings, Zoom recordings, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a brief that names where one deal is at risk and the specific next actions to de-risk it. The only write it can make is a Gmail draft, never sent, and only on confirmation.
+Deal-risk coaching for a single sales opportunity. Deal Read synthesizes a rep's own Salesforce data, Gmail threads, Google Calendar meetings, Zoom recordings, Slack channel deal-room evidence, and linked Google Drive proposal docs into a brief that names where one deal is at risk and the specific next actions to de-risk it. The only write it can make is a Gmail draft, never sent, and only on confirmation.
 
 ---
 
@@ -23,7 +23,7 @@ A review brief, short enough to read before a call:
 - **What's going well**, so it is not all red.
 - **How you ran the call:** talk ratio, question count, and the discovery topics you missed.
 - **Calendar context:** recent and upcoming customer meetings, with meeting-cadence flags when Calendar coverage is available.
-- **Internal evidence:** mapped Slack deal-room context and linked proposal-doc coverage, with gaps named when those sources are missing or unavailable.
+- **Internal evidence:** Slack channel deal-room context and linked proposal-doc coverage, with gaps named when those sources are missing or unavailable.
 - **Your next move this week.**
 - A **Computed inputs** footer: the verbatim output of the analysis scripts, proof the numbers were computed, not guessed.
 

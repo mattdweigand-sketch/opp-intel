@@ -84,7 +84,7 @@ def brief(obj, confidence="High", include_gap_section=True, omit_heading=None):
         f"Forecast Read - Matthew Weigand, 1 deals closing by 2026-06-30. Run 2026-06-05.\n",
         f"Confidence: {confidence} - current read.\n",
         "Review scope: Salesforce, Gmail, Calendar, Zoom, amount basis acv, posture conservative.\n",
-        "Internal evidence: auto; mapped room for Acme.\n",
+        "Internal evidence: auto; Slack room found for Acme.\n",
         "Category rollup: Commit 1, $100000, $0 at risk.\n",
         "Key movements: Movement was not evaluated.\n",
         "Recommendation changes: Acme - keep. Computed reason: no_current_risk_flags.\n",

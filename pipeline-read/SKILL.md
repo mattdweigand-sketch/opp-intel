@@ -1,12 +1,12 @@
 ---
 name: pipeline-read
-description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - read (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
+description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - read (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, Slack channel deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
 ---
 
 # Pipeline Read
 
 Coach one rep across their whole forecast. Pull that rep's own Salesforce, Gmail, Google Calendar, and Zoom data for
-every open opportunity closing inside the current fiscal quarter by default, add mapped Slack deal-room and linked
+every open opportunity closing inside the current fiscal quarter by default, add Slack channel deal-room and linked
 proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the shared
 deal-risk model in `../core`, and roll the results up into one ranked read. Read-only across all sources. Makes
 no writes at all, not even a draft.
@@ -40,7 +40,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
 - `--next-quarter`
 - `--window current_quarter|next_quarter|30d`
 - `--posture conservative|defend-commit|identify-upside`
-- `--amount-basis acv|crm-primary-amount`
+- `--amount-basis acv`
 - `--compare <prior-computed-inputs.json>`
 - `--internal auto|off|force`
 - `--internal-window 30d`
@@ -66,9 +66,9 @@ that lives in `deal-read`.
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`
-- **Slack** — mapped deal-room reads only in `internal=auto`; bounded fallback lookup only in
-  `internal=force`
-- **Google Drive** — proposal docs linked from the mapped Slack room or explicit deal context only
+- **Slack** — channel-name lookup through Slack in `internal=auto`; bounded message-content fallback is
+  allowed only in `internal=force`.
+- **Google Drive** — proposal docs linked from Slack room context or explicit deal context only
 
 **Hygiene mode is Salesforce-only.** It reads the portfolio list plus one batched
 `OpportunityContactRole` query; it does not touch Gmail, Calendar, Zoom, Slack, or Drive. The other connectors
@@ -87,7 +87,7 @@ pipeline aggregation, once over all deals).
 
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
-  emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus mapped Slack/linked-doc instructions when
+  emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus Slack channel/linked-doc instructions when
   enabled. You execute what it prints; you never improvise SOQL or broad Slack/Drive search. In a
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
@@ -128,7 +128,7 @@ pipeline aggregation, once over all deals).
    exact posture, amount basis, forecast category field, and internal-evidence mode. Run the SOQL as
    written via `soqlQuery`.
 3. **Large-run guardrail.** Count the returned opps. If the count exceeds `large_run_threshold`, list
-   them (name, stage, ACV, close date) and confirm with the rep before gathering — in read and
+   them (name, stage, ACV from `Added_ARR__c` only, close date) and confirm with the rep before gathering — in read and
    forecast each in-scope deal fans out its own subagent hitting the connectors in `plan.py`'s
    `per_deal_connectors` (Salesforce, Gmail, Google Calendar, and Zoom always; Slack and Google Drive whenever internal
    evidence is on, which is the default in those modes unless `--internal off` is passed). State that
@@ -145,17 +145,21 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
 
 1. Per-deal queries: run `plan.py` (no `mode`) with that deal's context
    `{"opp_id","account_id","account_name","contact_emails":[...],"created_date","today","forecast":true,
-   "internal":"auto|off|force","Slack_Channel__c","Deal_Room_URL__c"}` as applicable. Execute the
+   "internal":"auto|off|force"}` as applicable. Execute the
    returned Salesforce (`opportunity`, `contact_roles`, `account_contacts`, `tasks`, `history`,
    `prior_account_opps`), Gmail (`sent_freshness` + `thread_search`), Calendar (`calendar`), Zoom (`search_meetings`), and
    bounded internal-evidence instructions.
 
    **Contact union before Gmail search.** After running `contact_roles` and `account_contacts`, union
-   all non-null Email values from both result sets. Use the full union as the email list for
-   `thread_search` — do not rely solely on whatever `contact_emails` was passed in. This catches
-   contacts logged on the account but not yet added as opp contact roles.
-   - `internal=auto`: use only mapped Slack deal rooms from the configured Salesforce mapping fields.
-     If no room is mapped, record `deal_room_missing`; do not broad-search Slack.
+   all non-null Email values from both result sets. Use the full union as the email list for exact
+   `thread_search`, derive company domains from those addresses, and run `domain_thread_search` so
+   Gmail finds any email from that company domain. Always read `get_thread` on the most recent matching
+   domain thread. This catches contacts logged on the account but not yet added as opp contact roles,
+   and recent threads involving company contacts not listed on the opportunity.
+   - `internal=auto`: execute the emitted `slack_search_channels` step against public and private Slack
+     channel names, including generated aliases such as `NW1`/`nwl`; do not search message bodies. If a
+     channel is found, read up to `max_messages` and set `deal_room.coverage=found` with the channel id
+     as `source_ref`. If no channel is found, set `deal_room.coverage=checked_no_match`.
    - `internal=off`: emit and gather no Slack or linked-doc evidence.
    - `internal=force`: execute the `steps` array `plan.py` emits — **in order, no skipping**:
      **Step 1** — call `slack_search_channels` with each term, including `private_channel`. If any
@@ -163,7 +167,7 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
      `coverage=found`; do **not** run step 2. **Step 2** — only if step 1 found no named channel: call
      `slack_search_public_and_private` with the terms to surface signals in existing channels; set
      `coverage=checked_no_match`. Keep message window and doc count within the plan output.
-   - Linked Google Drive proposal docs are read only when linked from the mapped room or explicit deal
+   - Linked Google Drive proposal docs are read only when linked from Slack room context or explicit deal
      context. Do not broad-search Drive.
 2. **Read full email threads; keep Zoom at metadata only.** Every structural flag (slippage, stall,
    threading) is computable from SF fields and Zoom attendee lists without reading bodies. For email,
@@ -177,9 +181,13 @@ For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the sa
    `stage_entered_date`, `close_date_history`, and `latest_call_date` when available — same contract as
    `deal-read`. Keep each deal's `analyze.py` output; you feed them all to `rollup.py` next.
 4. Note for each deal a `latest_call_date` and the email list (direction + date), so `analyze.py`
-   computes freshness and latency deterministically. When `flags.email_data_stale` is true for a deal,
-   that deal's email view is lagging: say so and lower its confidence rather than asserting it went
-   quiet.
+   computes freshness and latency deterministically. Also pass `email_coverage.latest_sent_date` from
+   `sent_freshness`, plus `searched_emails` and `contact_union_emails` when available. If sent mail is
+   newer than the retrieved thread messages, or the contact union was not searched, `compute.py` emits an
+   email coverage gap and suppresses absence-based email claims. Include the searched company domains in
+   coverage evidence when available. When `flags.email_data_stale` is true
+   for a deal, that deal's email view is lagging: say so and lower its confidence rather than asserting
+   it went quiet.
 5. Whenever internal evidence is on (the default in every mode unless `--internal off`), add
    `internal_evidence` to the per-deal `analyze.py` bundle when Slack or linked
    proposal-doc evidence was gathered. Preserve source refs. Slack/Drive evidence can affect confidence,
@@ -213,10 +221,11 @@ requirements bind every per-deal subagent:
    cleanly (`ok` or `empty`). If the connector that would witness the finding was degraded, it becomes a
    coverage gap, not a finding. `compute.py` already enforces this for email — when email is degraded it
    nulls the inbound and unanswered counts, refuses to assert email staleness, and drops
-   `single_threaded` unless the Salesforce-sourced `logged_contact_roles` independently supports it — so
-   report the status honestly and let the engine neutralize. In the brief, name the degraded source
-   under "Where you're blind" and lower confidence; never present its silence as the prospect going
-   quiet.
+   `single_threaded` unless the Salesforce-sourced `logged_contact_roles` independently supports it.
+   It applies the same neutralization when `email_coverage` proves the thread search under-collected, so
+   report the status honestly and let the engine neutralize. In the brief, name the degraded or
+   under-collected source under "Where you're blind" and lower confidence; never present its silence as
+   the prospect going quiet.
 
 > **Claude Code execution (the Claude-Code-specific way to satisfy the contract above).** Run each in-
 > scope deal as its own subagent via the `Agent` tool, **on every run** — launch them concurrently (one
@@ -241,7 +250,7 @@ scan is the §1 portfolio list plus one batched contact-roles query:
 2. Group the contact-role rows by `OpportunityId`. For each opp compute, **deterministically, no
    judgement**: `logged_contact_roles` = number of its role rows; `champion_contact_roles` = number of
    those rows whose `Role` matches `champion_roles` (case-insensitive). The opp-level inputs —
-   `NextStep`, the amount field, `CloseDate`, `LastActivityDate` — already came back on the §1 portfolio
+   `NextStep`, `Added_ARR__c`, `CloseDate`, `LastActivityDate` — already came back on the §1 portfolio
    row; do not re-query them.
 3. For each opp, run `python3 <skill-dir>/scripts/analyze.py < bundle.json` with a light hygiene bundle
    (no transcript, no emails, no internal evidence):
@@ -252,7 +261,7 @@ scan is the §1 portfolio list plus one batched contact-roles query:
    ```
    compute.py emits the hygiene flags (`no_contact_roles`, `no_champion`, `missing_next_step`,
    `single_threaded`, `stale_activity` at the looser hygiene threshold, `overdue_close`). `rollup.py`
-   adds `missing_amount` itself, since it owns the amount basis.
+   adds `missing_amount` itself, since it owns the `Added_ARR__c` ACV basis.
 4. Go to §4 with `"mode":"hygiene"`, then present §5-hygiene. No subagents, no `--compare`, no internal
    evidence.
 
@@ -265,7 +274,7 @@ Assemble the roll-up bundle and run it once:
   "rep_name": "<rep>",
   "mode": "read|forecast|hygiene",
   "posture": "conservative|defend_commit|identify_upside",
-  "amount_basis": "acv|crm_primary_amount",
+  "amount_basis": "acv",
   "internal": "auto|off|force",
   "window": { ...the window block plan.py returned... },
   "prior_rollup": { ...prior Computed inputs JSON... },
@@ -274,8 +283,7 @@ Assemble the roll-up bundle and run it once:
       "opportunity_id",
       "name",
       "stage",
-      "acv",
-      "amount",
+      "Added_ARR__c",
       "forecast_category",
       "close_date",
       "internal_evidence",
@@ -285,15 +293,15 @@ Assemble the roll-up bundle and run it once:
   ]
 }
 ```
-The `name`, `stage`, `acv`, and `close_date` come straight from the §1 portfolio list the orchestrator
+The `name`, `stage`, `Added_ARR__c`, and `close_date` come straight from the §1 portfolio list the orchestrator
 already holds — the per-deal step only owes you `analyze_output` plus its cited evidence, so a subagent
-need not echo the deal facts back. For `acv`, pass the deal's real ACV from the opp record (the
-`Added_ARR__c` you queried). For forecast mode, also pass the configured amount field and forecast
-category from the same Salesforce portfolio row. If the user supplied `--compare`, load that file as
+need not echo the deal facts back. Do not populate ACV from any non-Added-ARR money field,
+`amount`, or a normalized `acv` alias; ACV is the Salesforce `Added_ARR__c` value. For forecast mode,
+also pass the forecast category from the same Salesforce portfolio row. If the user supplied `--compare`, load that file as
 JSON and pass the parsed object as `prior_rollup` (or a path as `compare_file`). It must be a prior
 Computed inputs object, not a prose brief. `rollup.py`
 returns `portfolio` (totals, ACV at risk, counts) and `ranking` (deals sorted by severity of current
-evidence: red flags before amber, then flag count, then amount, then days-to-close). In forecast mode it
+evidence: red flags before amber, then flag count, then Added ARR ACV, then days-to-close). In forecast mode it
 also returns `forecast.category_rollup`, `forecast.recommendations`, `internal_evidence`, and optional
 `movement`. In hygiene mode it returns `portfolio.distribution` (deals per dominant hygiene flag),
 `portfolio.flagged_deals`/`clean_deals`, and `hygiene.flag_precedence`; `ranking` is ordered by
@@ -376,19 +384,19 @@ Forecast Read - <rep>, <N> deals closing by <window end>. Run <date>.
 
 Confidence: <High / Medium / Low> - <coverage clause>.
 
-Review scope: <live Salesforce + Gmail + Calendar + Zoom, amount basis, forecast posture, category convention>.
+Review scope: <live Salesforce + Gmail + Calendar + Zoom, ACV basis Added_ARR__c, forecast posture, category convention>.
 
-Internal evidence: <internal mode; deal rooms mapped for N of M deals; linked proposal docs read for X
+Internal evidence: <internal mode; Slack rooms found for N of M deals; linked proposal docs read for X
 deals; missing/unavailable rooms named when material>.
 
-The number: <total amount in window>. Realistic call: <amount you would actually bank, based on computed
+The number: <total Added ARR ACV in window>. Realistic call: <ACV you would actually bank, based on computed
 risk posture and recommendations>.
 
 Category rollup:
-- Commit: <count>, <amount>, <amount at risk>
-- Upside: <count>, <amount>, <amount at risk>
-- Pipeline: <count>, <amount>, <amount at risk>
-- Unknown: <count>, <amount>, <amount at risk>
+- Commit: <count>, <ACV>, <ACV at risk>
+- Upside: <count>, <ACV>, <ACV at risk>
+- Pipeline: <count>, <ACV>, <ACV at risk>
+- Unknown: <count>, <ACV>, <ACV at risk>
 
 Key movements: <only if --compare supplied and movement.evaluated is true; otherwise say movement was
 not evaluated, or say the comparison snapshot was missing/invalid if rollup.py recorded that>.
@@ -401,7 +409,7 @@ Highest-risk deals:
 1. <Deal> - <risk, evidence, next move>.
 
 Evidence gaps: <source gaps, stale data, missing connector data, unknown forecast category, missing
-amount, missing comparison snapshot, missing deal room, unavailable linked docs>.
+Added ARR ACV, missing comparison snapshot, missing deal room, unavailable linked docs>.
 
 Your move this week: <single highest-leverage action>.
 
@@ -419,7 +427,7 @@ Rules:
 - Every Slack or Drive claim needs the source ref captured in `internal_evidence.signals`; omit claims
   without a source ref.
 - Slack and Drive can sharpen confidence, risk notes, evidence gaps, internal owner, and next move. They
-  cannot override Salesforce-owned amount, stage, close date, owner, or forecast category.
+  cannot override Salesforce-owned Added ARR ACV, stage, close date, owner, or forecast category.
 - Same computed footer and validate gate as §5. Forecast briefs must pass
   `python3 <skill-dir>/scripts/validate_brief.py` before presenting. Show only `Validation: PASS` in
   the chat output; keep the JSON in the brief file only.
@@ -502,5 +510,5 @@ reps; it does not write to Open Brain or deal-management.
   `pipeline-read` takes no outbound action and makes no writes of any kind.
 - No Sales plugin dependency. Downstream workflows may cite the Computed inputs JSON but should not
   re-score or rewrite its deterministic labels.
-- Broad Slack or Drive lookup is allowed only under `internal=force`; `internal=auto` uses mapped deal
-  rooms and linked proposal docs only.
+- Broad Slack message-body lookup is allowed only under `internal=force`; `internal=auto` uses Slack
+  channel-name lookup only.

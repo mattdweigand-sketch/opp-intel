@@ -36,7 +36,7 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: read default runs Calendar and mapped Slack/Drive",
+    ok &= check("pipeline: read default runs Calendar and Slack/Drive",
                 p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
@@ -74,7 +74,8 @@ def main():
     ok &= check("pipeline: numeric window keeps legacy no-lower-bound behavior", "CloseDate >=" not in q)
     ok &= check("pipeline: ordered by CloseDate ASC", "ORDER BY CloseDate ASC" in q)
     ok &= check("pipeline: account name relationship field selected", "Account.Name" in q)
-    ok &= check("pipeline: uses real ACV field, no bare Amount", "Calculated_ACV__c" in q and ", Amount," not in q)
+    ok &= check("pipeline: uses Added ARR only for ACV",
+                "Added_ARR__c" in q and "Calculated_ACV__c" not in q and "Amount__c" not in q and ", Amount," not in q)
     ok &= check("pipeline: 30d window end is 2026-07-04", p2["window"]["close_on_or_before"] == "2026-07-04")
 
     # --- Forecast portfolio phase: selected amount basis, category, posture, and internal controls.
@@ -110,40 +111,50 @@ def main():
         "created_date": "2026-05-21", "today": "2026-06-03",
     })
     opp = full["salesforce"]["opportunity"]
-    ok &= check("per-deal: opp query uses Calculated_ACV__c", "Calculated_ACV__c" in opp)
-    ok &= check("per-deal: no bare Amount field", ", Amount," not in opp and "(Amount," not in opp)
+    ok &= check("per-deal: opp query uses Added ARR only for ACV",
+                "Added_ARR__c" in opp and "Calculated_ACV__c" not in opp and "Amount__c" not in opp and ", Amount," not in opp and "(Amount," not in opp)
     ok &= check("per-deal: prior opps filter IsClosed", "IsClosed = true" in full["salesforce"]["prior_account_opps"])
     ok &= check("per-deal: history ordered ASC", "ORDER BY CreatedDate ASC" in full["salesforce"]["history"])
     ok &= check("per-deal: gmail sent_freshness present", full["gmail"]["sent_freshness"] == "in:sent newer_than:90d")
+    ok &= check("per-deal: gmail domain search emitted",
+                full["gmail"]["domain_thread_search"] == "from:(x.com) OR to:(x.com) newer_than:90d")
+    ok &= check("per-deal: most recent domain thread required",
+                full["gmail"]["most_recent_thread_search"]["read"] == "get_thread on the most recent matching thread")
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")
     ok &= check("per-deal: zoom q set", full["zoom"]["q"] == "Providence Investments")
 
-    mapped = run({
-        "deal_name": "Providence Investments", "account_name": "Providence Investments",
-        "forecast": True, "internal": "auto", "Slack_Channel__c": "C123",
-    })
-    ok &= check("internal auto: mapped-room Slack query emitted",
-                mapped["internal_evidence"]["slack"]["query_type"] == "mapped_deal_room")
-    ok &= check("internal auto: broad search disabled",
-                mapped["internal_evidence"]["slack"]["broad_search_allowed"] is False)
-
     missing = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
         "forecast": True, "internal": "auto",
     })
-    ok &= check("internal auto: missing room recorded",
-                missing["internal_evidence"]["coverage"] == "deal_room_missing")
-    ok &= check("internal auto: no fallback Slack query",
-                "slack" not in missing["internal_evidence"])
+    ok &= check("internal auto: channel-name lookup emitted",
+                missing["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
+    ok &= check("internal auto: message-body search still disabled",
+                missing["internal_evidence"]["slack"]["broad_search_allowed"] is False)
+    ok &= check("internal auto: Providence channel hyphen variant emitted",
+                "providence-investments" in missing["internal_evidence"]["slack"]["terms"])
 
     default_internal = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",
     })
-    ok &= check("internal default: no fallback Slack query",
+    ok &= check("internal default: channel lookup emitted",
                 default_internal["internal_evidence"]["mode"] == "auto"
-                and "slack" not in default_internal["internal_evidence"])
+                and default_internal["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
+
+    nw1 = run({
+        "deal_name": "NW1 - FA + GPX", "account_name": "NW1",
+    })
+    terms = nw1["internal_evidence"]["slack"]["terms"]
+    ok &= check("internal auto: NW1 channel aliases include nwl",
+                "NW1" in terms and "nwl" in terms)
+
+    fund_admin = run({
+        "deal_name": "Fund Admin Sales", "account_name": "Fund Admin Sales",
+    })
+    ok &= check("internal auto: underscore Slack channel variant emitted",
+                "fund_admin_sales" in fund_admin["internal_evidence"]["slack"]["terms"])
 
     force = run({
         "deal_name": "Providence Investments", "account_name": "Providence Investments",

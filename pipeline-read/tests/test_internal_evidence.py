@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for mapped internal-evidence planning and preservation."""
+"""Tests for Slack/Drive internal-evidence planning and preservation."""
 import json
 import os
 import subprocess
@@ -25,19 +25,20 @@ def check(name, cond):
 def main():
     ok = True
 
-    mapped = run_script(PLAN, {
+    channel = run_script(PLAN, {
         "deal_name": "Acme Growth Fund",
         "account_name": "Acme",
         "forecast": True,
         "internal": "auto",
-        "Slack_Channel__c": "C123",
     })
-    ie = mapped["internal_evidence"]
-    ok &= check("auto mapped: slack room query emitted",
-                ie["slack"]["query_type"] == "mapped_deal_room")
-    ok &= check("auto mapped: linked docs restricted to deal-room relationship",
+    ie = channel["internal_evidence"]
+    ok &= check("auto channel: slack channel lookup emitted",
+                ie["slack"]["query_type"] == "channel_name_lookup")
+    ok &= check("auto channel: hyphen channel variant emitted",
+                "acme-growth-fund" in ie["slack"]["terms"])
+    ok &= check("auto channel: linked docs restricted to deal-room relationship",
                 ie["linked_docs"]["relationship"] == "linked_from_deal_room")
-    ok &= check("auto mapped: linked docs only allowed from explicit context",
+    ok &= check("auto channel: linked docs only allowed from explicit context",
                 ie["linked_docs"]["allowed_when"] == ["linked_from_deal_room", "explicit_deal_context"])
 
     missing = run_script(PLAN, {
@@ -46,11 +47,11 @@ def main():
         "forecast": True,
         "internal": "auto",
     })
-    ok &= check("auto missing: missing room coverage recorded",
-                missing["internal_evidence"]["coverage"] == "deal_room_missing")
+    ok &= check("auto missing: channel-name lookup emitted",
+                missing["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
     ok &= check("auto missing: no broad slack search",
                 missing["internal_evidence"]["broad_search_allowed"] is False
-                and "slack" not in missing["internal_evidence"])
+                and missing["internal_evidence"]["slack"]["broad_search_allowed"] is False)
 
     off = run_script(PLAN, {
         "deal_name": "Acme Growth Fund",
@@ -75,7 +76,7 @@ def main():
         "compute_input": {"today": "2026-06-05"},
         "internal_evidence": {
             "mode": "auto",
-            "deal_room": {"source": "slack", "coverage": "mapped", "source_ref": "C123/1710000000"},
+            "deal_room": {"source": "slack", "coverage": "found", "source_ref": "C123/1710000000"},
             "linked_docs": [
                 {"source": "google_drive", "title": "Proposal", "coverage": "read",
                  "source_ref": "drive/file/abc"},

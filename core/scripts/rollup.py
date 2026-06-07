@@ -8,7 +8,7 @@ amounts in its head.
 
 Ranking is by severity of current evidence, not a predictive model: a deal with a
 red flag (from risk-model.json pipeline.flag_severity) outranks one with only amber
-flags; ties break on flag count, then amount, then days-to-close. Forecast labels
+flags; ties break on flag count, then Added ARR ACV, then days-to-close. Forecast labels
 and movement are deterministic output from this script.
 
 Usage: python3 rollup.py        # reads the bundle JSON on stdin
@@ -22,6 +22,7 @@ CONFIG = os.path.abspath(os.path.join(HERE, "..", "config"))
 SCHEMA_VERSION = "pipeline-read.computed-inputs.v1"
 TIER_RANK = {"red": 0, "amber": 1, "none": 2}
 RISK_SCORE = {"none": 0, "amber": 1, "red": 2}
+ADDED_ARR_FIELD = "Added_ARR__c"
 
 
 def load(name):
@@ -103,6 +104,20 @@ def last_touch_for(deal):
     return freshness.get("activity_anchor_date"), freshness.get("activity_anchor_source")
 
 
+def email_summary_for(deal):
+    metrics = deal_metrics(deal)
+    freshness = metrics.get("freshness", {}) or {}
+    email = metrics.get("email", {}) or {}
+    return {
+        "newest_email_date": freshness.get("newest_email_date"),
+        "last_outbound_date": freshness.get("last_outbound_date"),
+        "days_since_last_inbound": email.get("days_since_last_inbound"),
+        "unanswered_rep_emails": email.get("unanswered_rep_emails"),
+        "latest_sent_probe_date": email.get("latest_sent_probe_date"),
+        "searched_domains": email.get("searched_domains") or [],
+    }
+
+
 def classify(deal, severity):
     """Return (dominant_flag, tier, true_risk_flags) for one deal."""
     flags = deal_flags(deal)
@@ -150,20 +165,15 @@ def category_group(value, convention):
     return "unknown"
 
 
+def added_arr_acv_for_deal(deal):
+    return money_value(field_value(deal, ADDED_ARR_FIELD))
+
+
 def amount_for_basis(deal, amount_basis, amount_field):
-    # Honor the requested basis before falling back to the raw CRM amount. The
-    # config-mapped field for the basis wins (e.g. Added_ARR__c for acv, Amount__c for
-    # crm_primary_amount); deal.get(amount_basis) catches the orchestrator's "acv" key;
-    # deal.get("amount") is the last-resort fallback only. Listing "amount" first here
-    # silently reported CRM amount on every --amount-basis acv run.
-    return money_value(first_present(
-        field_value(deal, amount_field),
-        deal.get(amount_basis),
-        deal.get("amount"),
-        deal.get("acv"),
-        deal.get("Added_ARR__c"),
-        deal.get("Calculated_ACV__c"),
-    ))
+    if amount_basis == "acv":
+        return added_arr_acv_for_deal(deal)
+
+    raise ValueError(f"unknown amount_basis: {amount_basis}")
 
 
 def internal_for_deal(deal):
@@ -201,7 +211,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
     for deal in deals:
         dominant, tier, true_flags = classify(deal, severity)
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = money_value(first_present(deal.get("acv"), deal.get("Added_ARR__c"), deal.get("Calculated_ACV__c"), amount))
+        acv = added_arr_acv_for_deal(deal)
         category = category_value(deal, category_field)
         group = category_group(category, convention)
         last_touch, last_touch_source = last_touch_for(deal)
@@ -222,6 +232,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
             "risk_flags": true_flags,
             "last_touch": last_touch,
             "last_touch_source": last_touch_source,
+            "email": email_summary_for(deal),
             "coverage_gaps": source_gaps_for(deal),
         })
     return rows
@@ -299,7 +310,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
     for deal in deals:
         flags = dict(deal_flags(deal))
         amount = amount_for_basis(deal, amount_basis, amount_field)
-        acv = money_value(first_present(deal.get("acv"), deal.get("Added_ARR__c"), deal.get("Calculated_ACV__c"), amount))
+        acv = added_arr_acv_for_deal(deal)
         if "missing_amount" in precedence:
             flags["missing_amount"] = amount is None
         metrics = (deal.get("analyze_output") or {}).get("deal_metrics", {})
@@ -327,7 +338,7 @@ def build_hygiene_rows(deals, precedence, amount_basis, amount_field):
 
 
 def sort_hygiene(rows, precedence):
-    """Rank by dominant-flag precedence (clean last), then flag count, amount, days-to-close."""
+    """Rank by dominant-flag precedence (clean last), then flag count, Added ARR ACV, days-to-close."""
     rank = {f: i for i, f in enumerate(precedence)}
     big = float("inf")
     return sorted(
@@ -434,7 +445,7 @@ def recommendation_for(row, deal):
 
 
 def internal_rollup(deals, mode):
-    coverage = {"mapped": 0, "missing": 0, "unavailable": 0, "checked_no_match": 0}
+    coverage = {"found": 0, "mapped": 0, "missing": 0, "unavailable": 0, "checked_no_match": 0}
     linked_docs_read = 0
     linked_docs_unavailable = 0
     signals = []
@@ -444,7 +455,9 @@ def internal_rollup(deals, mode):
         internal = internal_for_deal(deal)
         room = internal.get("deal_room") or {}
         room_coverage = first_present(internal.get("coverage"), room.get("coverage"))
-        if room_coverage == "mapped":
+        if room_coverage == "found":
+            coverage["found"] += 1
+        elif room_coverage == "mapped":
             coverage["mapped"] += 1
         elif room_coverage == "deal_room_missing":
             coverage["missing"] += 1

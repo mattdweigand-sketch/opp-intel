@@ -1,11 +1,11 @@
 ---
 name: deal-read
-description: Deal-risk coaching for a single sales opportunity. Synthesizes the running rep's own Salesforce opportunity data, Zoom call recordings/summaries, Gmail threads, mapped Slack deal-room evidence, and linked Google Drive proposal docs into a coaching brief that names where the deal is at risk and the specific next actions to de-risk it. Trigger on "/deal-read <deal>", "give me a read on <deal>", "where is <deal> at risk", "what should I do next on <deal>", or any request for a risk read or next-step coaching on a named deal. Per-rep self-serve: reads only the running user's connected accounts. Do NOT use for team rollups across reps, per-call scoring of an arbitrary recording with no deal, or a whole-pipeline view across deals (that's /pipeline-hygiene for CRM health, /pipeline-read for risk, /pipeline-forecast for the number).
+description: Deal-risk coaching for a single sales opportunity. Synthesizes the running rep's own Salesforce opportunity data, Zoom call recordings/summaries, Gmail threads, Slack channel deal-room evidence, and linked Google Drive proposal docs into a coaching brief that names where the deal is at risk and the specific next actions to de-risk it. Trigger on "/deal-read <deal>", "give me a read on <deal>", "where is <deal> at risk", "what should I do next on <deal>", or any request for a risk read or next-step coaching on a named deal. Per-rep self-serve: reads only the running user's connected accounts. Do NOT use for team rollups across reps, per-call scoring of an arbitrary recording with no deal, or a whole-pipeline view across deals (that's /pipeline-hygiene for CRM health, /pipeline-read for risk, /pipeline-forecast for the number).
 ---
 
 # Deal Read
 
-Coach one rep on one deal. Pull that rep's own Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal-room, and
+Coach one rep on one deal. Pull that rep's own Salesforce, Gmail, Google Calendar, Zoom, Slack channel deal-room, and
 linked Google Drive proposal-doc evidence for a named opportunity, run it through a deal-risk model,
 and return the top risks with concrete next actions. Each action ties to evidence from a real call,
 email, Salesforce field, Slack source, or proposal doc. Never writes to Salesforce, sends mail,
@@ -14,7 +14,7 @@ modifies recordings, posts to Slack, or edits Drive docs.
 ## Input
 
 `/deal-read <opportunity name | account name>`. If no deal is named, ask which one. If the name matches
-multiple opportunities, list the candidates (name, stage, amount, close date) and ask which.
+multiple opportunities, list the candidates (name, stage, ACV from `Added_ARR__c`, close date) and ask which.
 
 **Two modes, same pipeline (steps 1–4 are identical):**
 - Default (review): output the deal-risk coaching brief (§5).
@@ -31,9 +31,9 @@ Five connectors. All reads are read-only. The one write this skill can make is c
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
 - **Gmail** — `search_threads`, `get_thread`; `create_draft` (draft only, §6)
-- **Slack** — mapped deal-room lookup by default; pass internal=force for bounded fallback lookup
-  by account/opp name, or internal=off to skip
-- **Google Drive** — proposal docs linked from the mapped Slack room or explicit deal context only
+- **Slack** — channel-name lookup through Slack by default; pass internal=force for bounded message
+  search by account/opp name, or internal=off to skip
+- **Google Drive** — proposal docs linked from Slack room context or explicit deal context only
 
 If a connector is not authorized, say so and proceed with the sources you have — note in the brief
 which evidence is missing and how that limits confidence.
@@ -101,8 +101,10 @@ user states otherwise; if genuinely unknown, ask once.
 
 ### 3. Pull the email thread (Gmail)
 
-1. Run the `gmail.thread_search` query from `plan.py`. Fall back to the account domain if individual
-   emails are sparse. Also run `gmail.sent_freshness` (`in:sent newer_than:Nd`) — `plan.py` always
+1. Run the `gmail.thread_search` query from `plan.py` for exact Salesforce contact emails, then derive
+   company domains from those emails and run `gmail.domain_thread_search` for any email from those
+   domains. Always read `get_thread` on the most recent matching domain thread. Also run
+   `gmail.sent_freshness` (`in:sent newer_than:Nd`) — `plan.py` always
    includes it because `search_threads` proved unreliable (it returns stale threads and silently drops
    recent messages, including ones sent today). Don't rely on a single OR-group query for recency.
 2. `get_thread` (FULL_CONTENT) on the live threads. Read for substance — questions raised, stalls,
@@ -117,14 +119,13 @@ user states otherwise; if genuinely unknown, ask once.
 ### 3.5. Internal evidence (Slack + Google Drive)
 
 After Gmail, run `plan.py` again with the full deal context. Execute the `internal_evidence.slack`
-instructions it returns when a mapped deal room exists. If no room is mapped, `plan.py` reports the
-source gap; pass `"internal": "force"` only when you intentionally want bounded fallback search. In force
-mode, execute the `steps` array `plan.py` emits **in order**: step 1 calls `slack_search_channels`
-(include `private_channel`) with the account/opp name terms — if a named channel matches, read from
-it (`coverage=found`) and stop; step 2 only runs if no named channel was found, calling
+instructions it returns. Slack evidence comes from Slack, not Salesforce. In `internal=auto`, call
+`slack_search_channels` (include `private_channel`) with the account/opp name terms — if a named
+channel matches, read from it (`coverage=found`) and stop. Pass `"internal": "force"` only when you
+intentionally want bounded message search after channel lookup; step 2 then calls
 `slack_search_public_and_private` for message signals (`coverage=checked_no_match`).
 
-Read linked Google Drive proposal docs only when they are linked from the mapped room or explicit deal
+Read linked Google Drive proposal docs only when they are linked from Slack room context or explicit deal
 context. Add Slack findings, linked-doc coverage, and proposal-doc findings to the `analyze.py` bundle
 as `internal_evidence`. Use this shape:
 
@@ -141,7 +142,7 @@ as `internal_evidence`. Use this shape:
 `analyze.py` keeps only source-backed signals and turns missing rooms or unavailable linked docs into
 explicit `internal_evidence.source_gaps` in the computed footer. Slack and Drive evidence can affect
 confidence, source gaps, risk notes, and next-move wording. It cannot override Salesforce-owned fields
-(amount, stage, close date, owner), which stay deterministic. Pass `"internal": "off"` to skip Slack
+(ACV from `Added_ARR__c`, stage, close date, owner), which stay deterministic. Pass `"internal": "off"` to skip Slack
 and Drive entirely.
 
 ### 4. Score the deal-risk model
@@ -209,7 +210,7 @@ Conversational, direct, second person ("you"), coaching tone — not a report du
 writing-style skill for voice. Structure:
 
 ```
-Deal: <Name> — <Stage>, <Amount/ACV>, closes <date> (<N> days out, <age> old)
+Deal: <Name> — <Stage>, <ACV from Added_ARR__c>, closes <date> (<N> days out, <age> old)
 
 Confidence: <High / Medium / Low> — <one clause on what it rests on, e.g. "Low: one call, no email
 thread, and email data flagged stale.">

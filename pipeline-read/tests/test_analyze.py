@@ -73,6 +73,16 @@ def main():
     ok &= check("connector status reaches compute",
                 "email_connector_degraded" in r["deal_metrics"]["coverage_gaps"])
 
+    r = run({
+        "compute_input": {
+            "today": "2026-06-06",
+            "emails": [{"direction": "out", "date": "2026-04-21"}],
+        },
+        "email_coverage": {"latest_sent_date": "2026-06-05"},
+    })
+    ok &= check("email coverage reaches compute",
+                "email_thread_coverage_gap" in r["deal_metrics"]["coverage_gaps"])
+
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})
     ok &= check("empty: no crash", "deal_metrics" in r)

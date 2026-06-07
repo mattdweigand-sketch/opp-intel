@@ -1,6 +1,6 @@
 ---
 name: pipeline-forecast
-description: Forecast-call read across a rep's whole pipeline - leads with the number, forecast posture, category rollup (commit/upside/pipeline), deterministic keep/downgrade/inspect/possible_upside labels, movement vs a prior snapshot, internal-evidence coverage, and named evidence gaps, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in forecast mode. Trigger on "/pipeline-forecast", "/pipeline-forecast --posture conservative", "/pipeline-forecast --compare <prior>", "is my forecast real", "what would I actually bank this quarter", "review my forecast". For the quick riskiest-first work-the-week view use /pipeline-read instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
+description: Forecast-call read across a rep's whole pipeline - leads with the number, forecast posture, category rollup (commit/upside/pipeline), deterministic keep/downgrade/inspect/possible_upside labels, movement vs a prior snapshot, internal-evidence coverage, and named evidence gaps, plus a computed-inputs audit footer. Thin command frontend over the shared pipeline-read engine, run in forecast mode. Trigger on "/pipeline-forecast", "/pipeline-forecast --posture conservative", "/pipeline-forecast --compare <prior>", "is my forecast real", "what would I actually bank this quarter", "review my forecast". For the quick riskiest-first work-the-week view use /pipeline-read instead. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, Slack channel deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that is deal-read) or another rep's pipeline.
 ---
 
 # Pipeline Forecast
@@ -30,7 +30,7 @@ Thin command frontend. The engine, shared config, and full pipeline live in this
 ## Arguments
 
 `--next-quarter` / `--window current_quarter|next_quarter|30d`; `--posture conservative|defend-commit|identify-upside`;
-`--amount-basis acv|crm-primary-amount`; `--compare <prior-computed-inputs.json>`;
+`--amount-basis acv`; `--compare <prior-computed-inputs.json>`;
 `--internal auto|off|force`; `--internal-window 30d`. Movement requires `--compare` with a prior
 `pipeline-read.computed-inputs.v1` artifact, never inferred from current CRM history.
 

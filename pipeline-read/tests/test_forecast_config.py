@@ -52,14 +52,21 @@ def main():
                 and "calendar_next_meeting_no_buyer_attendees" in severity["amber"])
 
     amount = sf["amount_basis"]
-    allowed = set(sf["opportunity_fields"]) | set(sf["pipeline_scope"]["fields"])
+    allowed = set(sf["opportunity_fields"]) | set(sf["pipeline_scope"]["fields"]) | set(amount["fields"].values())
     ok &= check("amount: default is acv", amount["default"] == "acv")
+    ok &= check("amount: acv is the only configured basis",
+                list(amount["fields"].keys()) == ["acv"])
     ok &= check("amount: acv maps to Added_ARR__c",
                 amount["fields"]["acv"] == "Added_ARR__c")
     ok &= check("amount: every basis maps to a configured SF field",
                 all(field in allowed for field in amount["fields"].values()))
     ok &= check("amount: bare Amount is not default",
                 amount["fields"][amount["default"]] != "Amount")
+    ok &= check("amount: default ACV query excludes calculated and generic amount fields",
+                "Calculated_ACV__c" not in sf["opportunity_fields"]
+                and "Amount__c" not in sf["opportunity_fields"]
+                and "Calculated_ACV__c" not in sf["pipeline_scope"]["fields"]
+                and "Amount__c" not in sf["pipeline_scope"]["fields"])
 
     cat = sf["forecast_category"]
     ok &= check("category: field configured", cat["field"] in allowed)
@@ -73,8 +80,13 @@ def main():
     internal = model["internal_evidence"]
     ok &= check("internal: default auto", internal["default"] == "auto")
     ok &= check("internal: pipeline default auto", internal["default_by_profile"]["pipeline"] == "auto")
-    ok &= check("internal: force-required fallback configured",
-                sf["internal_sources"]["slack_deal_room"]["fallback_requires_internal_force"] is True)
+    slack_cfg = sf["internal_sources"]["slack"]
+    ok &= check("internal: Salesforce Slack mapping disallowed",
+                slack_cfg["salesforce_mapping_allowed"] is False)
+    ok &= check("internal: auto channel lookup configured",
+                slack_cfg["auto_channel_name_lookup"] is True)
+    ok &= check("internal: message-body fallback remains force-gated",
+                slack_cfg["message_body_fallback_requires_internal_force"] is True)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)

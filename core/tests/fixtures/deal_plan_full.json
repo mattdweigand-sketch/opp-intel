@@ -11,13 +11,12 @@
       "b@x.com"
     ],
     "created_date": "2026-05-21",
-    "today": "2026-06-03",
-    "slack_deal_room": "C123"
+    "today": "2026-06-03"
   },
   "output": {
     "salesforce": {
       "find": "FIND {Providence Investments*} IN NAME FIELDS RETURNING Opportunity(Id, Name, StageName, CloseDate, LastActivityDate, OwnerId, AccountId)",
-      "opportunity": "SELECT Id, Name, StageName, ForecastCategory, Probability, Type, Added_ARR__c, Calculated_ACV__c, Amount__c, Full_Deal_Amount__c, Added_ACV_Fund_Admin__c, Added_GPX_Forecast__c, CloseDate, CreatedDate, LastActivityDate, NextStep, Next_Steps_Last_Modified_Date__c, SE_Next_Steps__c, SE_Next_Step_Date__c, Gong_Competitors_Mentioned__c, JSQ_Competitive_With__c, Competition_Justification__c, Champion_WdB__c, Decision_Maker__c, Pain_Need__c, Decision_Process_Justification__c, Decision_Criteria_Justification__c, Legal_Status__c, Fund_Admin_Proposal_Approval_Status__c, Critical_Event__c, Last_Meaningful_Event__c, Last_Meaningful_Event_Date__c FROM Opportunity WHERE Id = '006X'",
+      "opportunity": "SELECT Id, Name, StageName, ForecastCategory, Probability, Type, Added_ARR__c, CloseDate, CreatedDate, LastActivityDate, NextStep, Next_Steps_Last_Modified_Date__c, SE_Next_Steps__c, SE_Next_Step_Date__c, Gong_Competitors_Mentioned__c, JSQ_Competitive_With__c, Competition_Justification__c, Champion_WdB__c, Decision_Maker__c, Pain_Need__c, Decision_Process_Justification__c, Decision_Criteria_Justification__c, Legal_Status__c, Fund_Admin_Proposal_Approval_Status__c, Critical_Event__c, Last_Meaningful_Event__c, Last_Meaningful_Event_Date__c FROM Opportunity WHERE Id = '006X'",
       "contact_roles": {
         "tool": "getRelatedRecords",
         "sobject-name": "Opportunity",
@@ -39,6 +38,12 @@
     "gmail": {
       "sent_freshness": "in:sent newer_than:90d",
       "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d",
+      "domain_thread_search": "from:(x.com) OR to:(x.com) newer_than:90d",
+      "most_recent_thread_search": {
+        "query": "from:(x.com) OR to:(x.com) newer_than:90d",
+        "sort": "newest_first",
+        "read": "get_thread on the most recent matching thread"
+      },
       "workflow_signals": "from:(ironcladapp.com OR lexion.ai OR gong.io OR scratchpad.com) (\"Providence Investments\") newer_than:90d",
       "_workflow_note": "Read these workflow-tool notifications and map each sender domain to its signal_type via internal_evidence.workflow_tools in risk-model.json (e.g. ironcladapp.com -> clm_stage). Emit each as an internal_evidence signal with a source_ref (the message id/link). Internal-evidence lane only: these inform confidence, source gaps, risk notes, and next-move wording, never Salesforce-owned truth, ranking, or flag_severity."
     },
@@ -100,15 +105,37 @@
       ],
       "broad_search_allowed": false,
       "slack": {
-        "query_type": "mapped_deal_room",
-        "room": "C123",
-        "read": [
-          "recent_messages",
-          "pinned_items",
-          "bookmarks"
+        "query_type": "channel_name_lookup",
+        "steps": [
+          {
+            "step": 1,
+            "action": "slack_search_channels",
+            "terms": [
+              "Providence Investments",
+              "providence investments",
+              "providenceinvestments",
+              "providence-investments",
+              "providence_investments",
+              "providence",
+              "investments"
+            ],
+            "channel_types": "public_channel,private_channel",
+            "on_match": "read up to max_messages from the matched channel; set deal_room.coverage=found and source_ref to the channel id",
+            "on_no_match": "set deal_room.coverage=checked_no_match; no message-body search"
+          }
+        ],
+        "terms": [
+          "Providence Investments",
+          "providence investments",
+          "providenceinvestments",
+          "providence-investments",
+          "providence_investments",
+          "providence",
+          "investments"
         ],
         "max_messages": 80,
-        "broad_search_allowed": false
+        "broad_search_allowed": false,
+        "requires_internal_force": false
       },
       "linked_docs": {
         "source": "google_drive",

@@ -164,6 +164,37 @@ def stale_anchor_errors(text, computed):
     return errors
 
 
+def absence_claim_errors(text, computed):
+    """Coverage gaps mean missing data, not silence. Block prose that turns an
+    incomplete email gather into 'no outbound/no reply/went quiet' claims."""
+    email_gap = False
+    for gap in computed.get("source_gaps") or []:
+        if str(gap).startswith("email_") or gap == "activity_coverage_gap":
+            email_gap = True
+    for row in computed.get("ranking", []) or []:
+        for gap in row.get("coverage_gaps") or []:
+            if str(gap).startswith("email_") or gap == "activity_coverage_gap":
+                email_gap = True
+    if not email_gap:
+        return []
+
+    prose = prose_text(text).lower()
+    blocked = [
+        "no rep outbound",
+        "no outbound since",
+        "no reply",
+        "no response",
+        "went quiet",
+        "gone quiet",
+    ]
+    if any(phrase in prose for phrase in blocked):
+        return [
+            "Brief makes an absence-based email claim while computed inputs show email/activity coverage gaps. "
+            "Name the gap instead of asserting silence or no outbound."
+        ]
+    return []
+
+
 def validate(text):
     errors = []
 
@@ -211,6 +242,7 @@ def validate(text):
         errors.append("Where you're blind section missing while stale data or coverage gaps exist.")
 
     errors.extend(stale_anchor_errors(text, computed))
+    errors.extend(absence_claim_errors(text, computed))
 
     if is_hygiene:
         for heading in HYGIENE_SECTIONS:

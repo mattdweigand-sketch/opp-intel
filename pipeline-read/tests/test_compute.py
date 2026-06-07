@@ -344,6 +344,44 @@ def main():
     ok &= check("no connector_status: no *_connector_degraded gap",
                 not any(g.endswith("_connector_degraded") for g in r["coverage_gaps"]))
 
+    # Fixture 12: sent_freshness proves newer outbound exists than the retrieved
+    # thread messages. That is a thread-coverage gap, not evidence of silence.
+    r = run({
+        "today": "2026-06-06",
+        "opportunity": {"last_activity_date": "2026-06-05"},
+        "emails": [
+            {"direction": "out", "date": "2026-04-21"},
+            {"direction": "in", "date": "2026-04-22"},
+        ],
+        "email_coverage": {"latest_sent_date": "2026-06-05"},
+    })
+    ok &= check("email coverage: thread gap surfaced",
+                "email_thread_coverage_gap" in r["coverage_gaps"])
+    ok &= check("email coverage: last outbound uses sent freshness",
+                r["freshness"]["last_outbound_date"] == "2026-06-05")
+    ok &= check("email coverage: recent outbound true",
+                r["flags"]["recent_rep_outbound"] is True)
+    ok &= check("email coverage: absence claims neutralized",
+                r["email"]["days_since_last_inbound"] is None
+                and r["email"]["unanswered_rep_emails"] is None
+                and r["flags"]["email_data_stale"] is False)
+
+    # Fixture 13: contact union must be searched. If account/contact-role union
+    # discovered contacts that were not used in Gmail, single-threaded cannot rest
+    # on email-observed participants alone.
+    r = run({
+        "today": "2026-06-06",
+        "observed_participants": ["solo@prospect.com"],
+        "email_coverage": {
+            "searched_emails": ["solo@prospect.com"],
+            "contact_union_emails": ["solo@prospect.com", "buyer@prospect.com"],
+        },
+    })
+    ok &= check("email coverage: contact-union gap surfaced",
+                "email_contact_union_gap" in r["coverage_gaps"])
+    ok &= check("email coverage: single-thread suppressed without SF basis",
+                r["flags"]["single_threaded"] is False)
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

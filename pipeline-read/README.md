@@ -2,7 +2,7 @@
 
 Pipeline Read ranks forecast risk across a rep's whole pipeline. It is the pipeline-level sibling of
 [Deal Read](../deal-read): it pulls the rep's own Gmail threads, Google Calendar meetings, Zoom recordings, Salesforce data,
-mapped Slack deal rooms, and linked Google Drive proposal docs for every open opportunity closing in
+Slack channel deal rooms, and linked Google Drive proposal docs for every open opportunity closing in
 JSQ's current fiscal quarter by default. It runs each deal through the same deal-risk model, then rolls
 the results into one ranked read: which deals are most at risk, the dominant risk on each with cited
 evidence, and the next move. It is read-only across every source and makes no writes, not even a draft.
@@ -45,9 +45,9 @@ Forecast options:
 | `/pipeline-forecast --posture identify-upside` | Look for credible upside while still naming weak evidence. |
 | `/pipeline-forecast --amount-basis acv` | Use ACV as the forecast amount basis. |
 | `/pipeline-forecast --compare deliverables/prior-computed-inputs.json` | Compare against a prior Computed inputs artifact for movement. |
-| `/pipeline-forecast --internal auto` | Read mapped Slack deal rooms and linked Drive docs only. |
+| `/pipeline-forecast --internal auto` | Check Slack channel names and linked Drive docs only. |
 | `/pipeline-forecast --internal off` | Skip Slack and Google Drive internal evidence. |
-| `/pipeline-forecast --internal force --internal-window 30d` | Use bounded fallback Slack lookup over the last 30 days when no room is mapped. |
+| `/pipeline-forecast --internal force --internal-window 30d` | Use bounded Slack message search over the last 30 days after channel lookup. |
 
 Pipeline Read stays *shallow per deal* so a full run stays practical. It works mostly from meeting
 summaries plus Salesforce and email-freshness signals, so it can score every deal without reading
@@ -64,7 +64,7 @@ A read or forecast brief, short enough to read before a forecast call:
   (single-threaded, slipped/overdue, stale-data).
 - Riskiest first: deals ranked by severity of current evidence, each with cited evidence and a
   specific next action.
-- Internal context: mapped Slack deal-room evidence and linked Google Drive proposal docs, unless
+- Internal context: Slack channel deal-room evidence and linked Google Drive proposal docs, unless
   the run passes `--internal off`.
 - On-track deals, so the brief is not only risk.
 - Blind spots: the deals with stale or thin data, named rather than asserted on.
@@ -94,8 +94,8 @@ scores.
 Salesforce owns opportunity truth: amount, stage, close date, owner, and forecast category. Calendar can
 affect meeting-cadence flags in read and forecast. Slack deal rooms and linked proposal docs can
 affect confidence, evidence gaps, risk notes, internal owner, and next-move wording. They cannot change
-deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which restricts
-evidence to mapped deal rooms and linked docs. Broad Slack fallback lookup is allowed only when the
+deterministic ranking or Salesforce-owned fields. The default internal mode is `auto`, which checks
+Slack channel names directly through Slack. Broad Slack message-body lookup is allowed only when the
 internal mode is explicitly `force`.
 
 ---
@@ -106,8 +106,8 @@ internal mode is explicitly `force`.
    `AGENTS.md`, then `CONTEXT.md`.
 2. Connect Salesforce, Gmail, Google Calendar, Zoom, Slack, and Google Drive (all read-only). Gmail,
    Calendar, and Zoom are always part of read and forecast. Slack and Google Drive are the internal
-   evidence lane; default `auto` reads mapped rooms and linked docs only. Use `--internal force` for
-   bounded fallback lookup or `--internal off` to skip those internal sources.
+   evidence lane; default `auto` checks Slack channel names and linked docs only. Use `--internal force`
+   for bounded Slack message search or `--internal off` to skip those internal sources.
 3. Ask: `/pipeline-read` for the riskiest-first work-the-week read, `/pipeline-forecast` for the
    forecast-call view, and add `--next-quarter` to either for the next fiscal quarter.
 
@@ -156,7 +156,7 @@ Shape:
     "run_date": "...",
     "mode": "read|forecast|hygiene",
     "posture": "conservative|defend_commit|identify_upside",
-    "amount_basis": "acv|crm_primary_amount",
+    "amount_basis": "acv",
     "internal_evidence": "auto|off|force"
   },
   "portfolio": {},
@@ -169,6 +169,8 @@ Shape:
 ```
 
 `forecast`, `internal_evidence`, `hygiene`, and `movement` appear only when the run needs them.
+ACV rows and ACV totals come only from Salesforce `Added_ARR__c`; non-Added-ARR Salesforce money
+fields and normalized aliases are not ACV sources.
 
 ---
 

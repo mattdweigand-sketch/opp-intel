@@ -167,9 +167,13 @@ def main():
     # drop recent mail), and when the rep emailed very recently (a new draft would
     # be redundant). emails is sorted ascending, so the last item is newest.
     newest_email = parse(emails[-1]["date"]) if emails else None
+    email_coverage = snap.get("email_coverage") or {}
+    latest_sent_probe = parse(email_coverage.get("latest_sent_date"))
     last_outbound = max(
         (parse(e["date"]) for e in emails if e.get("direction") == "out"), default=None
     )
+    if latest_sent_probe and (last_outbound is None or latest_sent_probe > last_outbound):
+        last_outbound = latest_sent_probe
     latest_call = parse(snap.get("latest_call_date"))
     activity_anchor = max([d for d in (last_activity, latest_call) if d], default=None)
 
@@ -189,6 +193,44 @@ def main():
     )
     if activity_coverage_gap:
         coverage_gaps.append("activity_coverage_gap")
+
+    email_thread_coverage_gap = (
+        latest_sent_probe is not None
+        and (newest_email is None or latest_sent_probe > newest_email)
+    )
+    if email_thread_coverage_gap:
+        coverage_gaps.append("email_thread_coverage_gap")
+
+    searched_emails = {
+        str(e).strip().lower()
+        for e in (email_coverage.get("searched_emails") or [])
+        if str(e).strip()
+    }
+    contact_union_emails = {
+        str(e).strip().lower()
+        for e in (email_coverage.get("contact_union_emails") or [])
+        if str(e).strip()
+    }
+    email_contact_union_gap = bool(
+        contact_union_emails and searched_emails and not contact_union_emails.issubset(searched_emails)
+    )
+    if email_contact_union_gap:
+        coverage_gaps.append("email_contact_union_gap")
+    searched_domains = {
+        str(d).strip().lower()
+        for d in (email_coverage.get("searched_domains") or [])
+        if str(d).strip()
+    }
+    contact_domains = {
+        str(d).strip().lower()
+        for d in (email_coverage.get("contact_domains") or email_coverage.get("company_domains") or [])
+        if str(d).strip()
+    }
+    email_domain_coverage_gap = bool(
+        contact_domains and searched_domains and not contact_domains.issubset(searched_domains)
+    )
+    if email_domain_coverage_gap:
+        coverage_gaps.append("email_domain_coverage_gap")
 
     # A degraded connector (timeout/error/partial) produces a coverage gap, never a
     # finding. Coverage gaps are NOT risk flags: they drive confidence/blindness
@@ -222,7 +264,13 @@ def main():
     # connector actually ran. When email is degraded, absence is not evidence of
     # silence: null the inbound/unanswered counts and refuse to assert staleness.
     # The coverage gap (email_connector_degraded) carries the uncertainty instead.
-    if email_degraded:
+    email_absence_unreliable = (
+        email_degraded
+        or email_thread_coverage_gap
+        or email_contact_union_gap
+        or email_domain_coverage_gap
+    )
+    if email_absence_unreliable:
         days_since_last_inbound = None
         unanswered_rep_emails = None
         email_data_stale = False
@@ -317,7 +365,7 @@ def main():
     single_threaded = (
         contacts_engaged is not None and contacts_engaged <= single_thread_max
     )
-    if email_degraded and single_threaded:
+    if email_absence_unreliable and single_threaded:
         logged_roles = snap.get("logged_contact_roles")
         single_threaded = (
             logged_roles is not None and logged_roles <= single_thread_max
@@ -378,6 +426,8 @@ def main():
                 "days_since_last_inbound": days_since_last_inbound,
                 "unanswered_rep_emails": unanswered_rep_emails,
                 "median_response_latency_days": median_response_latency_days,
+                "latest_sent_probe_date": latest_sent_probe.isoformat() if latest_sent_probe else None,
+                "searched_domains": sorted(searched_domains),
             },
             "calendar": {
                 "coverage": calendar_coverage,

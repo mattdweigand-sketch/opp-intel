@@ -40,7 +40,8 @@
       "profiles": ["deal", "pipeline"],
       "status_key": "email",
       "status_key_aliases": ["gmail"],
-      "status": "Reports execution_status under connector_status.email; degraded yields email_connector_degraded and neutralizes email-derived negative assertions (see execution_status.email_degraded_neutralization)."
+      "status": "Reports execution_status under connector_status.email; degraded yields email_connector_degraded and neutralizes email-derived negative assertions (see execution_status.email_degraded_neutralization).",
+      "coverage": "Reports email_coverage.latest_sent_date from sent_freshness and the searched/contact-union email lists when available. Gmail search must include exact Salesforce contact emails and company-domain search derived from those addresses, then read get_thread on the newest matching domain thread. If sent_freshness is newer than retrieved thread messages, compute.py emits email_thread_coverage_gap and suppresses absence-based email claims. If account/contact-role union emails were not searched, compute.py emits email_contact_union_gap."
     },
     "calendar": {
       "plan": "emit_historical_and_future_meeting_lookup",
@@ -60,9 +61,10 @@
       "status": "Reports execution_status under connector_status.zoom; degraded yields zoom_connector_degraded coverage gap."
     },
     "slack": {
-      "plan": "mapped_room_or_force_bounded_lookup",
+      "plan": "slack_channel_name_lookup_or_force_bounded_lookup",
       "normalize": "internal_evidence.deal_room",
-      "profiles": ["deal", "pipeline"]
+      "profiles": ["deal", "pipeline"],
+      "status": "Slack evidence comes from Slack, not Salesforce. internal=auto searches public/private Slack channel names from deterministic account/deal terms. Message-body fallback requires internal=force."
     },
     "drive": {
       "plan": "linked_docs_from_explicit_deal_context",

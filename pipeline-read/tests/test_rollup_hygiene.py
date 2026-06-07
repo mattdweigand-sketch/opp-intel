@@ -26,7 +26,7 @@ def deal(name, acv, dtc, flags, contacts=None, days_since_activity=None):
     base = {"no_contact_roles": False, "single_threaded": False, "no_champion": False,
             "missing_next_step": False, "stale_activity": False, "overdue_close": False}
     base.update(flags)
-    return {"name": name, "stage": "X", "acv": acv, "close_date": "2026-07-30",
+    return {"name": name, "stage": "X", "Added_ARR__c": acv, "close_date": "2026-07-30",
             "analyze_output": {"deal_metrics": {"days_to_close": dtc, "contacts_engaged": contacts,
                                                  "days_since_last_activity": days_since_activity,
                                                  "flags": base}}}
