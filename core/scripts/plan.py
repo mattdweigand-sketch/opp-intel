@@ -107,6 +107,23 @@ def normalize_token(value):
     return str(value or "").strip().lower().replace("-", "_")
 
 
+def resolve_run_depth(ctx):
+    token = normalize_token(ctx.get("run_depth") or ctx.get("depth") or ctx.get("mode_depth"))
+    if ctx.get("deep_search") or ctx.get("deep-search"):
+        token = "deep_search"
+    if not token:
+        return "fast"
+    if token in {"fast", "standard"}:
+        return "fast"
+    if token in {"deep_search", "deep"}:
+        return "deep_search"
+    raise ValueError(f"unknown run_depth: {ctx.get('run_depth') or ctx.get('depth') or ctx.get('mode_depth')}")
+
+
+def quote_ids(ids):
+    return ", ".join("'%s'" % str(i).replace("'", "") for i in ids)
+
+
 def forecast_options(ctx, fields, model):
     forecast_cfg = model.get("forecast", {})
     amount_cfg = fields.get("amount_basis", {})
@@ -294,6 +311,7 @@ def calendar_plan(ctx, model, profile="pipeline"):
 def pipeline_plan(ctx):
     fields = load("sf-fields.json")
     model = load("risk-model.json")
+    profiles = load("depth-profiles.json")
     scope = fields["pipeline_scope"]
     pipe_cfg = model.get("pipeline", {})
     scope_cfg = pipe_cfg.get("scope", {})
@@ -305,24 +323,56 @@ def pipeline_plan(ctx):
     # Hygiene is a deliberately cheap SF-only scan: no forecast block, no internal
     # evidence lane, and the per-deal loop reads Salesforce only (no Gmail/Zoom).
     hygiene = bool(ctx.get("hygiene") or normalize_token(ctx.get("mode")) == "hygiene")
+    run_depth = resolve_run_depth(ctx) if not hygiene else None
+    profile_key = "pipeline_deep_search" if run_depth == "deep_search" else "pipeline_fast"
+    profile_cfg = profiles.get(profile_key, {})
+    execution_strategy = profile_cfg.get(
+        "execution_strategy",
+        "per_deal_search_agents" if run_depth == "deep_search" else "bulk_first",
+    )
 
     forecast_enabled = bool(ctx.get("forecast")) and not hygiene
     forecast = forecast_options(ctx, fields, model) if forecast_enabled else None
     internal = None if hygiene else internal_plan(ctx, fields, model, profile="pipeline")
 
-    # Connectors that each per-deal subagent will hit, derived from the resolved mode so
-    # the large-run confirmation prompt is accurate on every run instead of recited from
-    # prose. Hygiene hits Salesforce only; read/forecast add Gmail/Calendar/Zoom, plus
-    # Slack and Google Drive when internal evidence is on (forecast default, or
-    # --internal auto|force).
+    # Runtime connector shape, derived from the resolved run depth so the large-run
+    # prompt is accurate. Fast mode starts bulk Salesforce-only and names conditional
+    # or deferred sources separately; deep search preserves the per-deal connector
+    # fan-out; hygiene stays Salesforce-only.
     # See SKILL.md §1.3.
-    per_deal_connectors = ["Salesforce"] if hygiene else ["Salesforce", "Gmail", "Google Calendar", "Zoom"]
-    if internal:
+    if hygiene:
+        per_deal_connectors = ["Salesforce"]
+    elif run_depth == "fast":
+        per_deal_connectors = ["Salesforce"]
+    else:
+        per_deal_connectors = ["Salesforce", "Gmail", "Google Calendar", "Zoom"]
+    if internal and run_depth == "deep_search":
         per_deal_connectors += ["Slack", "Google Drive"]
 
     out = {"salesforce": {}, "window": window,
            "large_run_threshold": pipe_cfg.get("large_run_threshold", 15),
            "per_deal_connectors": per_deal_connectors}
+    if not hygiene:
+        out["run_depth"] = run_depth
+        out["execution_strategy"] = execution_strategy
+        out["conditional_connectors"] = (
+            ["Gmail", "Google Calendar", "Zoom"] if run_depth == "fast" else []
+        )
+        out["deferred_connectors"] = (
+            ["Slack", "Google Drive"] if run_depth == "fast" and internal else []
+        )
+        out["escalation_policy"] = {
+            "material_deal_acv_pct": pipe_cfg.get("confidence_gate", {}).get("material_deal_acv_pct", 0.25),
+            "material_top_n_by_amount": pipe_cfg.get("confidence_gate", {}).get("material_top_n_by_amount", 1),
+            "triggers": [
+                "material_amount",
+                "red_or_amber_risk",
+                "email_data_stale",
+                "activity_coverage_gap",
+                "primary_connector_degraded",
+            ],
+            "unresolved_result": "confidence_blocked_low",
+        }
     if hygiene:
         out["mode"] = "hygiene"
     if forecast:
@@ -342,6 +392,46 @@ def pipeline_plan(ctx):
             f'SELECT {", ".join(cr_fields)} FROM {sobject} WHERE {id_field} IN ({ids})'
         )
         out["champion_roles"] = model.get("hygiene", {}).get("champion_roles", [])
+        return out
+
+    # Fast mode phase 3: after the portfolio query returns, callers pass the in-scope
+    # opportunity/account ids back in and receive bulk Salesforce queries. These replace
+    # the default per-deal subagent fan-out for the standard pipeline path.
+    if run_depth == "fast" and ctx.get("opp_ids"):
+        opp_ids = [str(i) for i in ctx.get("opp_ids") or [] if str(i).strip()]
+        account_ids = [str(i) for i in ctx.get("account_ids") or [] if str(i).strip()]
+        if opp_ids:
+            h_scope = fields.get("hygiene_scope", {})
+            cr_fields = h_scope.get(
+                "contact_roles_fields",
+                ["OpportunityId", "Role", "IsPrimary", "Contact.Name", "Contact.Email"],
+            )
+            out["salesforce"]["bulk_contact_roles"] = (
+                f'SELECT {", ".join(cr_fields)} FROM '
+                f'{h_scope.get("contact_roles_sobject", "OpportunityContactRole")} '
+                f'WHERE {h_scope.get("opportunity_id_field", "OpportunityId")} IN ({quote_ids(opp_ids)})'
+            )
+            task_fields = ["WhatId", *[f for f in fields["task_fields"] if f != "WhatId"]]
+            history_fields = ["OpportunityId", *[f for f in fields["history_fields"] if f != "OpportunityId"]]
+            out["salesforce"]["bulk_tasks"] = (
+                f'SELECT {", ".join(dedupe(task_fields))} FROM Task '
+                f'WHERE WhatId IN ({quote_ids(opp_ids)}) ORDER BY ActivityDate DESC'
+            )
+            out["salesforce"]["bulk_history"] = (
+                f'SELECT {", ".join(dedupe(history_fields))} FROM OpportunityHistory '
+                f'WHERE OpportunityId IN ({quote_ids(opp_ids)}) ORDER BY CreatedDate ASC'
+            )
+        if account_ids:
+            contact_fields = ["AccountId", *[f for f in fields["contact_fields"] if f != "AccountId"]]
+            out["salesforce"]["bulk_account_contacts"] = (
+                f'SELECT {", ".join(dedupe(contact_fields))} FROM Contact '
+                f'WHERE AccountId IN ({quote_ids(account_ids)}) AND Email != null'
+            )
+        out["bulk_reduce"] = {
+            "script": "scripts/pipeline_bulk_reduce.py",
+            "input": "portfolio rows plus bulk Salesforce result sets",
+            "output": "per-deal analyze.py bundles",
+        }
         return out
 
     select = list(scope["fields"])

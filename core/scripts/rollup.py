@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Roll per-deal analyze.py outputs up into one deterministic pipeline view.
 
-pipeline-read runs the full deal-read gather + analyze.py once per in-scope deal,
-then feeds every per-deal result here. rollup.py ranks the deals and computes the
+pipeline-read feeds one analyze.py output per in-scope deal, whether that output
+came from the fast bulk-first path or explicit deep search. rollup.py ranks the
+deals and computes the
 portfolio aggregates so the model never eyeballs "which deal is riskiest" or sums
 amounts in its head.
 

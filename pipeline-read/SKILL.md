@@ -1,20 +1,20 @@
 ---
 name: pipeline-read
-description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - read (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Per-rep, live connectors (Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, linked Google Drive proposal docs), read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
+description: Shared engine for /pipeline-read, /pipeline-forecast, and /pipeline-hygiene. Resolves the running rep's open opportunities closing in the current fiscal quarter by default and rolls them into one of three views - read (riskiest deals first, each with its dominant risk and next move), forecast (the number, category rollup, keep/downgrade labels), or hygiene (a cheap Salesforce-only CRM data-quality scan: contacts, champion, next-step, amount, freshness) - all with a computed-inputs audit footer. Standard read/forecast mode is fast and bulk-first by default; --deep-search opts into richer per-deal connector fan-out. Per-rep, live connectors, read-only, no writes. Do NOT use for a deep read of one named deal (that's deal-read) or for another rep's pipeline.
 ---
 
 # Pipeline Read
 
-Coach one rep across their whole forecast. Pull that rep's own Salesforce, Gmail, Google Calendar, and Zoom data for
-every open opportunity closing inside the current fiscal quarter by default, add mapped Slack deal-room and linked
-proposal-doc evidence by default in every mode (turn it off with `--internal off`), run each deal through the shared
-deal-risk model in `../core`, and roll the results up into one ranked read. Read-only across all sources. Makes
-no writes at all, not even a draft.
+Coach one rep across their whole forecast. Standard read/forecast mode is **fast** by default: resolve
+the portfolio once, run bulk Salesforce evidence queries, reduce those rows into compact per-deal
+`analyze.py` bundles, and escalate only material/risky/blind deals to bounded Gmail/Calendar/Zoom or
+internal evidence. `--deep-search` opts into richer per-deal connector fan-out when the user accepts
+the time and token cost. Read-only across all sources. Makes no writes at all, not even a draft.
 
 ## Input
 
-This file is the shared **engine**: scope resolution, the per-deal gather loop, the roll-up, and all
-three output views. The mode is chosen by the **command**, not inferred:
+This file is the shared **engine**: scope resolution, fast/deep-search gather, the roll-up, and all
+three output views. The view mode is chosen by the **command**, not inferred:
 
 - **`/pipeline-read`** → run in read mode, present the ranked forecast-risk brief (§5).
 - **`/pipeline-forecast`** → run in forecast mode, present the forecast-read view (§5-forecast).
@@ -42,6 +42,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
 - `--posture conservative|defend-commit|identify-upside`
 - `--amount-basis acv`
 - `--compare <prior-computed-inputs.json>`
+- `--deep-search`
 - `--internal auto|off|force`
 - `--internal-window 30d`
 
@@ -51,7 +52,7 @@ Forecast mode (`/pipeline-forecast`) also accepts:
   forecast posture, category rollup, recommendation labels, movement if a prior computed-inputs JSON is
   supplied, internal evidence coverage, and named evidence gaps.
 - Hygiene (step 1, then §2-3-hygiene, then §4 and §5-hygiene): the cheap Salesforce-only CRM
-  data-quality scan. It does **not** run the per-deal Gmail/Calendar/Zoom/Slack loop in §2-3.
+  data-quality scan. It does **not** run fast/deep-search evidence gather.
 
 The roll-up bundle's `mode` field is set explicitly by the command (`read`, `forecast`, or
 `hygiene`). `rollup.py` obeys that field; it does **not** infer the view from the presence of
@@ -81,18 +82,25 @@ which evidence is missing and how that limits confidence across the affected dea
 
 This surface is thin. Shared mechanics live in `../core/`; the local `scripts/` files are compatibility
 wrappers that delegate there. This SKILL.md owns command routing, mode choice, portfolio output shape,
-and the no-write policy. You invoke four wrapper scripts directly: `scripts/plan.py` (what to query,
-both phases), `scripts/pipeline_reduce.py` (per-deal evidence reduction), `scripts/analyze.py`
+and the no-write policy. You invoke five wrapper scripts directly: `scripts/plan.py` (what to query,
+both phases), `scripts/pipeline_bulk_reduce.py` (fast-mode bulk Salesforce grouping),
+`scripts/pipeline_reduce.py` (deep-search per-deal evidence reduction), `scripts/analyze.py`
 (per-deal processing, once per deal), and `scripts/rollup.py` (the pipeline aggregation, once over all
 deals).
 
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
-  query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
+  query, `run_depth`, `execution_strategy`, forecast fields, amount basis, category field, and
+  internal-evidence plan. Default `run_depth` is `fast` and default `execution_strategy` is
+  `bulk_first`; pass `"run_depth":"deep_search"` for deep search. Without `mode`, it
   emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus mapped Slack/linked-doc instructions when
   enabled. You execute what it prints; you never improvise SOQL or broad Slack/Drive search. In a
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
   batched `contact_roles_bulk` query and the `champion_roles` list.
+- **`scripts/pipeline_bulk_reduce.py`** — the standard fast-mode reducer. Feed it portfolio rows plus
+  bulk Salesforce result sets (`contact_roles`, `account_contacts`, `tasks`, `history`); it emits
+  compact per-deal `analyze.py` bundles and marks deferred primary sources as coverage gaps so missing
+  Gmail/Calendar/Zoom cannot become false silence.
 - **`scripts/pipeline_reduce.py`** — the per-deal evidence boundary. Feed it saved connector payloads
   for one deal; it emits a compact `analyze.py` bundle plus evidence metadata. `source_ref` is an audit
   trail, not routine roll-up context.
@@ -123,29 +131,47 @@ deals).
 1. Run `python3 <skill-dir>/scripts/plan.py` with `{"mode":"pipeline","today":"<YYYY-MM-DD>"}`. This
    resolves JSQ's current fiscal quarter from the Feb 1 fiscal-year start. Add `"next_quarter":true` or
    `"window":"next_quarter"` when the user asks for next quarter, or `"window":"30d"`, `"forecast":true`,
-   `"posture":"conservative"`, `"amount_basis":"acv"`, `"internal":"auto"`, or similar when the user
-   asked for them. On the first pass it returns a
+   `"posture":"conservative"`, `"amount_basis":"acv"`, `"internal":"auto"`,
+   `"run_depth":"deep_search"`, or similar when the user asked for them. On the first pass it returns a
    `whoami` step: call Salesforce `getUserInfo` to get the running rep's Id.
 2. Run `plan.py` again with `{"mode":"pipeline","today":...,"window":...,"owner_id":"<your Id>",...}`.
    It returns the `salesforce.pipeline` SOQL, the resolved `window` (`close_on_or_after` and
-   `close_on_or_before` for quarter windows), the `large_run_threshold`, and, in forecast mode, the
-   exact posture, amount basis, forecast category field, and internal-evidence mode. Run the SOQL as
+   `close_on_or_before` for quarter windows), the `run_depth`, the `execution_strategy`, the
+   `large_run_threshold`, and, in forecast mode, the exact posture, amount basis, forecast category
+   field, and internal-evidence mode. Run the SOQL as
    written via `soqlQuery`.
-3. **Large-run guardrail.** Count the returned opps. If the count exceeds `large_run_threshold`, list
-   them (name, stage, ACV, close date) and confirm with the rep before gathering — in read and
-   forecast each in-scope deal fans out its own subagent hitting the connectors in `plan.py`'s
-   `per_deal_connectors` (Salesforce, Gmail, Google Calendar, and Zoom always; Slack and Google Drive whenever internal
-   evidence is on, which is the default in those modes unless `--internal off` is passed). State that
-   connector list verbatim from `per_deal_connectors`; do not recite it from memory, since the set
-   shifts with the resolved mode. A large set means that many parallel connector runs at once. Offer to
-   narrow the window if the set is large. **In hygiene mode there is no per-deal fan-out** —
-   `per_deal_connectors` is Salesforce-only and the whole scan is two queries, so it stays cheap even on
-   a large pipeline; the threshold prompt is informational there.
+3. **Large-run guardrail.** Count the returned opps. In fast mode, `per_deal_connectors` is
+   Salesforce-only and the next step is a small number of bulk SOQL queries, so the threshold prompt is
+   informational. In deep search, if the count exceeds `large_run_threshold`, list the opps (name,
+   stage, ACV, close date) and confirm before gathering because every in-scope deal fans out to the
+   connectors in `per_deal_connectors`.
 
-### 2–3. Gather and analyze each deal (the deal-read loop)
+### 2-3-fast. Gather and analyze (standard fast mode)
 
-For **each** in-scope opp, run the per-deal `deal-read` pipeline. This is the same gather-and-score as
-`deal-read` §1–4; do it per deal:
+Fast mode is the default for read and forecast.
+
+1. After the portfolio list, run `plan.py` again with
+   `{"mode":"pipeline","today":...,"opp_ids":[...],"account_ids":[...]}`. It returns bulk Salesforce
+   queries for contact roles, account contacts, tasks, and opportunity history. Run those SOQL queries
+   as written.
+2. Feed the portfolio rows plus the bulk Salesforce results to
+   `python3 <skill-dir>/scripts/pipeline_bulk_reduce.py`. It emits one compact `analyze.py` bundle per
+   deal. Deferred Gmail/Calendar/Zoom are marked as coverage gaps; do not convert those gaps into
+   "went quiet" or "no meeting" findings.
+3. Run `python3 <skill-dir>/scripts/analyze.py < analyze-bundle.json` once per deal. Assemble the
+   roll-up bundle from those outputs and proceed to §4.
+4. Escalate only when the planner's `escalation_policy` or `rollup.py` confidence gate says extra
+   evidence can change confidence or action: material amount, red/amber risk, `email_data_stale`,
+   `activity_coverage_gap`, or a primary connector degraded gap. For those deals only, run the bounded
+   per-deal plan below, reduce with `pipeline_reduce.py`, re-run `analyze.py`, and replace that deal's
+   fast result before the final roll-up. If the gap remains unresolved, keep the confidence block and
+   say to reconcile before trusting the read.
+
+### 2-3-deep-search. Gather and analyze each deal (explicit deep search)
+
+Only use this path when `run_depth` is `deep_search` / `--deep-search`.
+
+For **each** in-scope opp, run the bounded per-deal pipeline:
 
 1. Per-deal queries: run `plan.py` (no `mode`) with that deal's context
    `{"opp_id","account_id","account_name","contact_emails":[...],"created_date","today","forecast":true,
@@ -243,11 +269,11 @@ requirements bind every per-deal subagent:
    under "Where you're blind" and lower confidence; never present its silence as the prospect going
    quiet.
 
-> **Claude Code execution (the Claude-Code-specific way to satisfy the contract above).** Run each in-
-> scope deal as its own subagent via the `Agent` tool, **on every run** — launch them concurrently (one
+> **Claude Code deep-search execution (the Claude-Code-specific way to satisfy the contract above).** Run each in-
+> scope deal as its own subagent via the `Agent` tool only in deep search — launch them concurrently (one
 > message, multiple `Agent` calls) so the deals gather in parallel and each deal's raw payload lands in
 > that subagent's throwaway context, not the orchestrator's. Pass `model: "haiku"` to each `Agent` call.
-> Give each subagent a **narrow** prompt: the deal-context dict, "follow SKILL.md §2–3 steps 1–4,
+> Give each subagent a **narrow** prompt: the deal-context dict, "follow SKILL.md §2-3-deep-search steps 1-4,
 > metadata only," and the return contract — "reply
 > with **only** this deal's `analyze.py` JSON output plus `pipeline_reduce.py`'s `evidence_summary`; do
 > not include quotes, raw transcripts, or email bodies." The orchestrator collects the compact replies and runs `rollup.py` once
@@ -257,7 +283,7 @@ requirements bind every per-deal subagent:
 
 ### 2-3-hygiene. Gather (Salesforce-only, no per-deal loop)
 
-**Hygiene mode skips §2–3 entirely.** Do not fan out subagents, do not read Zoom or Gmail. The whole
+**Hygiene mode skips fast/deep-search gather entirely.** Do not fan out subagents, do not read Zoom or Gmail. The whole
 scan is the §1 portfolio list plus one batched contact-roles query:
 
 1. After the §1 portfolio list, run `plan.py` once more with
@@ -524,7 +550,7 @@ reps; it does not write to Open Brain or deal-management.
 - Whole in-scope pipeline per run, one rep. For a deep read of a single deal, redirect to `/deal-read`.
 - Per-rep only: operate on the running user's own connected accounts. Do not access another rep's
   mailbox or recordings.
-- Confirm before a large run (see §1.3). A full read loops the connectors per deal.
+- Confirm before a large deep-search run (see §1.3). Standard fast mode is bulk-first.
 - Read and forecast propose actions; hygiene proposes none (it names data gaps only). Either way
   `pipeline-read` takes no outbound action and makes no writes of any kind.
 - No Sales plugin dependency. Downstream workflows may cite the Computed inputs JSON but should not

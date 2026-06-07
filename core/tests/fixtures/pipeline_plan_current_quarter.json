@@ -22,13 +22,31 @@
     },
     "large_run_threshold": 15,
     "per_deal_connectors": [
-      "Salesforce",
+      "Salesforce"
+    ],
+    "run_depth": "fast",
+    "execution_strategy": "bulk_first",
+    "conditional_connectors": [
       "Gmail",
       "Google Calendar",
-      "Zoom",
+      "Zoom"
+    ],
+    "deferred_connectors": [
       "Slack",
       "Google Drive"
     ],
+    "escalation_policy": {
+      "material_deal_acv_pct": 0.25,
+      "material_top_n_by_amount": 1,
+      "triggers": [
+        "material_amount",
+        "red_or_amber_risk",
+        "email_data_stale",
+        "activity_coverage_gap",
+        "primary_connector_degraded"
+      ],
+      "unresolved_result": "confidence_blocked_low"
+    },
     "internal_evidence": {
       "mode": "force",
       "window_days": 30,

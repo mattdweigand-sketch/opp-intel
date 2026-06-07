@@ -59,6 +59,75 @@
     },
     "output": "rollup"
   },
+  "pipeline_fast": {
+    "profile": "pipeline_fast",
+    "scope": "many_opportunities",
+    "run_depth": "fast",
+    "execution_strategy": "bulk_first",
+    "salesforce": "portfolio_scope_plus_bulk_core_fields",
+    "email": {
+      "thread_depth": "escalation_only_bounded_threads",
+      "max_threads": 3,
+      "sent_freshness": true
+    },
+    "calendar": {
+      "history": "escalation_only_recent_meeting_presence",
+      "future": "escalation_only_upcoming_meeting_presence",
+      "detail": "metadata_only"
+    },
+    "calls": {
+      "max_calls": 1,
+      "detail": "summary_first",
+      "call_execution": false
+    },
+    "slack": {
+      "mode": "deferred_until_material_or_blind",
+      "max_messages": 40,
+      "read_pins_and_bookmarks": true
+    },
+    "drive": {
+      "linked_docs": "deferred_coverage_plus_titles",
+      "max_docs": 3
+    },
+    "output": "rollup"
+  },
+  "pipeline_deep_search": {
+    "profile": "pipeline_deep_search",
+    "scope": "many_opportunities",
+    "run_depth": "deep_search",
+    "execution_strategy": "per_deal_search_agents",
+    "salesforce": "portfolio_scope_plus_per_deal_core_fields",
+    "email": {
+      "thread_depth": "bounded_recent_threads",
+      "max_threads": 3,
+      "sent_freshness": true
+    },
+    "calendar": {
+      "history": "recent_meeting_presence",
+      "future": "upcoming_meeting_presence",
+      "detail": "metadata_only"
+    },
+    "calls": {
+      "max_calls": 1,
+      "detail": "summary_first",
+      "call_execution": false
+    },
+    "slack": {
+      "mode": "mapped_room_default",
+      "max_messages": 40,
+      "read_pins_and_bookmarks": true
+    },
+    "drive": {
+      "linked_docs": "coverage_plus_titles",
+      "max_docs": 3
+    },
+    "worker_budget": {
+      "max_tool_calls_per_deal": 12,
+      "model": "haiku",
+      "return": "analyze_output_evidence_summary_connector_status_source_refs"
+    },
+    "output": "rollup"
+  },
   "hygiene": {
     "profile": "hygiene",
     "scope": "many_opportunities",

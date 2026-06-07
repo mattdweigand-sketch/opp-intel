@@ -22,6 +22,7 @@ def main():
         "--window current_quarter|next_quarter|30d",
         "--amount-basis acv",
         "--compare <prior-computed-inputs.json>",
+        "--deep-search",
         "--internal auto|off|force",
         "Slack",
         "Google Calendar",
@@ -37,6 +38,10 @@ def main():
         "Internal evidence:",
         "JSQ's fiscal year starts Feb 1",
         "--window next_quarter",
+        "pipeline_bulk_reduce.py",
+        "run_depth",
+        "bulk_first",
+        "deep_search",
     ]
 
     ok = True

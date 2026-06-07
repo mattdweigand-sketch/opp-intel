@@ -36,8 +36,13 @@ def main():
     ok &= check("pipeline: fiscal-year start surfaced",
                 p1["window"]["fiscal_year_start"] == "02-01")
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
-    ok &= check("pipeline: read default runs Calendar and mapped Slack/Drive",
-                p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+    ok &= check("pipeline: default run depth is fast", p1["run_depth"] == "fast")
+    ok &= check("pipeline: default strategy is bulk first", p1["execution_strategy"] == "bulk_first")
+    ok &= check("pipeline: fast default starts Salesforce-only",
+                p1["per_deal_connectors"] == ["Salesforce"])
+    ok &= check("pipeline: fast default defers primary and internal connectors",
+                p1["conditional_connectors"] == ["Gmail", "Google Calendar", "Zoom"]
+                and p1["deferred_connectors"] == ["Slack", "Google Drive"])
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
     pq = run({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
@@ -90,8 +95,20 @@ def main():
     ok &= check("forecast: amount field selected", "Added_ARR__c" in fq)
     ok &= check("forecast: no phantom mapping fields in pipeline query", "Slack_Channel__c" not in fq and "Deal_Room_URL__c" not in fq)
     ok &= check("forecast: default internal is auto", pf["forecast"]["internal"] == "auto")
-    ok &= check("forecast: connectors include Calendar, Slack, and Drive when internal on",
-                pf["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+    ok &= check("forecast: fast default starts Salesforce-only",
+                pf["per_deal_connectors"] == ["Salesforce"])
+    ok &= check("forecast: fast default records internal as deferred",
+                pf["deferred_connectors"] == ["Slack", "Google Drive"])
+
+    deep = run({
+        "mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX",
+        "run_depth": "deep_search",
+    })
+    ok &= check("deep search: run depth surfaced", deep["run_depth"] == "deep_search")
+    ok &= check("deep search: per-deal search strategy emitted",
+                deep["execution_strategy"] == "per_deal_search_agents")
+    ok &= check("deep search: connectors include Calendar, Slack, and Drive when internal on",
+                deep["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
 
     poff = run({
         "mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX",
@@ -100,8 +117,24 @@ def main():
     ok &= check("internal off: no internal plan emitted", "internal_evidence" not in poff)
     ok &= check("internal off: no Slack mapping fields selected",
                 "Slack_Channel__c" not in poff["salesforce"]["pipeline"])
-    ok &= check("internal off: connectors exclude Slack/Drive but keep Calendar",
-                poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom"])
+    ok &= check("internal off: fast still starts Salesforce-only",
+                poff["per_deal_connectors"] == ["Salesforce"])
+
+    bulk = run({
+        "mode": "pipeline", "today": "2026-06-04",
+        "opp_ids": ["006A", "006B"],
+        "account_ids": ["001A", "001B"],
+    })
+    ok &= check("fast bulk: contact roles query emitted",
+                "bulk_contact_roles" in bulk["salesforce"]
+                and "006A" in bulk["salesforce"]["bulk_contact_roles"])
+    ok &= check("fast bulk: account contacts query emitted",
+                "bulk_account_contacts" in bulk["salesforce"]
+                and "001A" in bulk["salesforce"]["bulk_account_contacts"])
+    ok &= check("fast bulk: tasks and history emitted",
+                "bulk_tasks" in bulk["salesforce"] and "bulk_history" in bulk["salesforce"])
+    ok &= check("fast bulk: reducer script surfaced",
+                bulk["bulk_reduce"]["script"] == "scripts/pipeline_bulk_reduce.py")
 
     # --- Per-deal phase: unchanged deal-read contract (no mode key => deal plan).
     full = run({

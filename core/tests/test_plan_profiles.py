@@ -57,6 +57,17 @@ def main():
     hygiene = run_plan({"mode": "pipeline", "hygiene": True, "today": "2026-06-04", "owner_id": "005XX"})
     ok &= check("hygiene plan: Salesforce only", hygiene["per_deal_connectors"] == ["Salesforce"])
 
+    fast = run_plan({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
+    ok &= check("pipeline fast: default run depth", fast["run_depth"] == "fast")
+    ok &= check("pipeline fast: bulk strategy", fast["execution_strategy"] == "bulk_first")
+    ok &= check("pipeline fast: starts Salesforce only", fast["per_deal_connectors"] == ["Salesforce"])
+
+    deep = run_plan({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX", "run_depth": "deep_search"})
+    ok &= check("pipeline deep search: run depth", deep["run_depth"] == "deep_search")
+    ok &= check("pipeline deep search: per-deal strategy", deep["execution_strategy"] == "per_deal_search_agents")
+    ok &= check("pipeline deep search: connector fan-out preserved",
+                deep["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+
     zoom = load_adapter("calls_zoom")
     gong = load_adapter("calls_gong")
     calendar = load_adapter("calendar")
