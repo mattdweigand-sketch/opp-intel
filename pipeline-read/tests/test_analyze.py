@@ -72,6 +72,8 @@ def main():
     })
     ok &= check("connector status reaches compute",
                 "email_connector_degraded" in r["deal_metrics"]["coverage_gaps"])
+    ok &= check("confidence: degraded email caps at Low",
+                r["confidence"]["max_label"] == "Low")
 
     r = run({
         "compute_input": {
@@ -82,6 +84,8 @@ def main():
     })
     ok &= check("email coverage reaches compute",
                 "email_thread_coverage_gap" in r["deal_metrics"]["coverage_gaps"])
+    ok &= check("confidence: email thread gap caps at Low",
+                r["confidence"]["max_label"] == "Low")
 
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})

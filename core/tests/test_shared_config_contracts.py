@@ -26,10 +26,16 @@ def main():
     fields = load("sf-fields.json")
     profiles = load("depth-profiles.json")
     contracts = load("source-contracts.json")
+    confidence = load("confidence-policy.json")
 
     ok &= check("shared risk thresholds exist", model["thresholds"]["email_window_days"] == 90)
     ok &= check("deal legal status preserved", "legal_status" in model)
     ok &= check("pipeline config exists", "pipeline" in model and "flag_severity" in model["pipeline"])
+    ok &= check("confidence policy labels configured",
+                confidence["labels"] == ["Low", "Medium", "High"])
+    ok &= check("confidence policy: stale email is Low",
+                "email_data_stale" in confidence["deal"]["low_reason_codes"]
+                and "stale_data" in confidence["pipeline"]["low_reason_codes"])
     ok &= check("calendar scoring thresholds exist",
                 model["calendar"]["scoring"]["late_stage_days_to_close"] == 30
                 and model["calendar"]["scoring"]["recent_stage_movement_days"] == 14)

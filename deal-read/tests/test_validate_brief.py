@@ -72,6 +72,17 @@ def main():
     )
     ok &= check("High + coverage gap fails", rc == 1 and "coverage gaps" in out)
 
+    ceiling_footer = {
+        "deal_metrics": {"flags": {"email_data_stale": False}, "coverage_gaps": []},
+        "confidence": {"max_label": "Low", "reason_codes": ["email_coverage_gap"]},
+    }
+    rc, out = run(
+        "Confidence: Medium, partial coverage.\n\n"
+        "Computed inputs:\n" + full_footer(ceiling_footer)
+    )
+    ok &= check("confidence above computed ceiling fails",
+                rc == 1 and "cap confidence at Low" in out)
+
     rc, out = run(
         "Confidence: Medium, no live email thread.\n\n"
         "Computed inputs:\n" + footer_with_gaps(["email_domain_coverage_gap"])

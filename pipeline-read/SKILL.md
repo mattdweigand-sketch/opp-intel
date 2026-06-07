@@ -107,7 +107,8 @@ pipeline aggregation, once over all deals).
 - **`scripts/rollup.py`** — the pipeline aggregator. Feed it every per-deal `analyze.py` output; it
   ranks deals by severity of current evidence, computes portfolio and forecast aggregates, emits
   deterministic recommendation labels, and compares against a prior Computed inputs artifact when
-  supplied. Do not rank, label, compare, or sum in your head.
+  supplied. It also emits the pipeline confidence ceiling. Do not rank, label, compare, sum, or set
+  confidence above the computed ceiling in your head.
 - **`../core/config/risk-model.json`** — chosen framework plus the `pipeline`, `forecast`, and
   `internal_evidence` blocks. To change posture options, recommendation labels, close-window controls,
   or internal-evidence caps, edit this file.
@@ -337,8 +338,8 @@ minutes, not a report dump. Reference the writing-style skill for voice. Structu
 ```
 Pipeline Read — <rep>, <N> deals closing by <window end>. Run <date>.
 
-Confidence: <High / Medium / Low> — <one clause on coverage, e.g. "Medium: full read on 9 of 11 deals;
-2 had stale email data and are flagged below.">
+Confidence: <High / Medium / Low> — <one clause on coverage; never exceed
+`computed.confidence.max_label`.>
 
 Forecast at a glance: <total Added ARR in window; Added ARR at risk $X (Y%); single-threaded N; slipped/overdue N;
 stale-data N>. <one honest sentence on whether this forecast is as solid as it looks>
@@ -369,9 +370,9 @@ Rules:
 - Actions are specific and assignable: "Email <name> to get the security review scheduled before
   <date>", not "build urgency."
 - Rank by `rollup.py`'s `ranking`. Do not reorder by gut feel or by assumed win probability.
-- **Calibrate confidence to evidence, and lead with it.** Rate Low when most deals had thin or stale
-  data; Medium on partial coverage; High only when you got a current read across the whole in-scope set.
-  Name the deals you could not see in "Where you're blind".
+- **Calibrate confidence from computed inputs, and lead with it.** Use `confidence.max_label` from
+  `rollup.py` as the ceiling. You may choose a lower label if the narrative evidence is thin, but you
+  may not exceed the computed ceiling. Name the deals you could not see in "Where you're blind".
 - **The Computed inputs footer is required in the brief file.** Paste `rollup.py`'s verbatim output into
   the brief before validating. Never hand-write or summarize it; if you didn't run `rollup.py`, say so
   rather than fabricating the block.
@@ -392,7 +393,7 @@ evidence gaps, and one move for the week. Structure:
 ```
 Forecast Read - <rep>, <N> deals closing by <window end>. Run <date>.
 
-Confidence: <High / Medium / Low> - <coverage clause>.
+Confidence: <High / Medium / Low> - <coverage clause; never exceed `computed.confidence.max_label`>.
 
 Review scope: <live Salesforce + Gmail + Calendar + Zoom, Added ARR basis Added_ARR__c, forecast posture, category convention>.
 
@@ -451,8 +452,8 @@ gap is the deliverable. Structure:
 ```
 Pipeline Hygiene — <rep>, <N> deals closing by <window end>. Run <date>.
 
-Confidence: <High / Medium / Low> — <coverage clause, e.g. "High: Salesforce read cleanly on all N
-opps." Lower it only if contact roles could not be read for some opps.>
+Confidence: <High / Medium / Low> — <coverage clause; never exceed `computed.confidence.max_label`.
+For hygiene this is High only when Salesforce read cleanly on all in-scope opps.>
 
 Hygiene distribution:
 - NO CONTACTS: <n>
@@ -483,8 +484,8 @@ Rules:
 - State the bare fact behind each flag (the count, the blank field, the days-since-activity). **Do not
   add a recommendation, next step, or coaching line** — that is what makes this hygiene and not read.
   If the rep wants the fix, that is `/pipeline-read` or `/deal-read`.
-- Calibrate confidence to read coverage: High when the contact-roles query returned for every opp;
-  lower it and name the opps whose roles you could not read.
+- Calibrate confidence from `rollup.py`: use `confidence.max_label` as the ceiling and name any opps
+  whose Salesforce/contact-role coverage limited confidence.
 - Same computed footer and validate gate as §5. Pipe the finished brief into
   `python3 <skill-dir>/scripts/validate_brief.py` (it requires the `Hygiene distribution` and `By deal`
   sections plus the footer). Show only `Validation: PASS` in chat; keep the JSON in the brief file only.

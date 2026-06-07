@@ -17,6 +17,8 @@ import json
 import os
 import sys
 
+from confidence import pipeline_confidence
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.abspath(os.path.join(HERE, "..", "config"))
 SCHEMA_VERSION = "pipeline-read.computed-inputs.v1"
@@ -206,6 +208,10 @@ def internal_signals_for(deal):
     return [s for s in (internal.get("signals") or []) if s.get("source_ref")]
 
 
+def confidence_for_deal(deal):
+    return (deal.get("analyze_output") or {}).get("confidence") or {}
+
+
 def build_rows(deals, severity, amount_basis, amount_field, category_field, convention):
     rows = []
     for deal in deals:
@@ -234,6 +240,7 @@ def build_rows(deals, severity, amount_basis, amount_field, category_field, conv
             "last_touch_source": last_touch_source,
             "email": email_summary_for(deal),
             "coverage_gaps": source_gaps_for(deal),
+            "confidence": confidence_for_deal(deal),
         })
     return rows
 
@@ -715,6 +722,9 @@ def main():
                 "window": bundle.get("window"),
                 "portfolio": portfolio,
                 "ranking": ranking,
+                "confidence": pipeline_confidence(
+                    "hygiene", ranking, coverage_gap_deals=portfolio.get("coverage_gap_deals")
+                ),
                 "hygiene": {
                     "flag_precedence": precedence,
                     "stale_activity_days": model.get("hygiene", {}).get("stale_activity_days"),
@@ -732,6 +742,7 @@ def main():
             )
             ranking = sort_ranking(rows)
             portfolio = portfolio_for(deals, rows)
+            source_gaps = aggregate_coverage_gaps(deals)
 
             out = {
                 "schema_version": SCHEMA_VERSION,
@@ -747,7 +758,13 @@ def main():
                 "window": bundle.get("window"),
                 "portfolio": portfolio,
                 "ranking": ranking,
-                "source_gaps": aggregate_coverage_gaps(deals),
+                "source_gaps": source_gaps,
+                "confidence": pipeline_confidence(
+                    "forecast" if forecast_requested else "read",
+                    ranking,
+                    source_gaps=source_gaps,
+                    coverage_gap_deals=portfolio.get("coverage_gap_deals"),
+                ),
                 "severity_tiers_used": severity,
             }
 

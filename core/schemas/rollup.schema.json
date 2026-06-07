@@ -15,6 +15,16 @@
     },
     "portfolio": { "type": "object" },
     "ranking": { "type": "array", "items": { "type": "object" } },
+    "confidence": {
+      "type": "object",
+      "properties": {
+        "max_label": { "enum": ["Low", "Medium", "High"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "coverage_gap_deals": { "type": "array", "items": { "type": "string" } },
+        "source_gaps": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
     "forecast": { "type": "object" },
     "hygiene": { "type": "object" },
     "internal_evidence": { "type": "object" }

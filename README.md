@@ -104,6 +104,7 @@ Source boundaries are enforced by bundle metadata and validators, not prompt wor
 - Slack coverage must prove a Slack MCP read. The bundle records `slack_mcp_checked`, searched channel names, channel matches, and the Slack-source `deal_room.source_ref`.
 - A missing Gmail/Slack proof becomes a coverage gap. It cannot become "no email thread," "email went quiet," "no Slack room," or "no Slack activity."
 - `deal-read` validates these claims before presentation. A brief fails if it cites Salesforce as Slack evidence or makes absence claims without the required connector proof.
+- Confidence is capped by computed inputs. `core/config/confidence-policy.json` owns the chosen ceiling rules, `analyze.py` and `rollup.py` emit `confidence.max_label`, and validators reject briefs that exceed it.
 
 ## Agent governance
 
@@ -115,6 +116,7 @@ This repo treats each slash-command surface as a scoped operator over opportunit
 - No-write surface: `pipeline-read` makes no writes. Read, forecast, and hygiene are read-only outputs.
 - Human approval: externally visible actions require an explicit user confirmation for the exact action. Prior approval does not carry over to a different action.
 - Auditability: deal and pipeline briefs must carry computed-inputs evidence and pass the relevant validator before they are treated as final. Validators enforce coverage gaps and source-boundary claims.
+- Confidence: briefs may sound less certain than the computed ceiling, but never more certain.
 - Failure handling: missing or unauthorized connectors become source gaps. The agent should not infer risk from unavailable evidence.
 - Model boundary: this repo uses deterministic flags and posture labels. It does not predict win probability or create local predictive weights.
 

@@ -8,10 +8,8 @@ drafted brief before presenting it:
   1. The `Computed inputs` JSON block must be present, non-empty, and parseable.
      It is the audit trail proving analyze.py actually ran. A missing or empty
      block means the deterministic steps were skipped and the brief is untrustworthy.
-  2. Confidence must not be High when the computed flags show email_data_stale.
-     Stale email data means the brief is reasoning on a lagging view, so an
-     authoritative rating is unearned. (Low vs Medium stays model judgment; this
-     enforces only the machine-grounded floor: no High on stale data.)
+  2. Confidence must not exceed the computed confidence ceiling. Stale email
+     data and source gaps cap how certain the brief may sound.
 
 The drafted brief still carries analyze.py's verbatim JSON so the gate can verify it,
 but the reader should never have to scroll the raw object. On success this script
@@ -31,6 +29,7 @@ import sys
 
 CONF_RE = re.compile(r"Confidence:\s*\**\s*(High|Medium|Low)", re.IGNORECASE)
 JSON_BLOCK_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL)
+CONF_RANK = {"Low": 1, "Medium": 2, "High": 3}
 EMAIL_ABSENCE_RE = re.compile(
     r"\b(no|without|lack(?:s|ing)?|missing)\b.{0,50}\b(email|gmail|thread|inbound|reply|conversation)\b"
     r"|\b(email|gmail|thread|inbound|reply|conversation)\b.{0,50}\b(stale|quiet|silent|no activity|no evidence|missing)\b"
@@ -81,6 +80,13 @@ def find_computed_block(text):
 def find_confidence(text):
     m = CONF_RE.search(text)
     return m.group(1).capitalize() if m else None
+
+
+def confidence_exceeds_ceiling(confidence, computed):
+    ceiling = (computed.get("confidence") or {}).get("max_label")
+    if not ceiling:
+        return False
+    return CONF_RANK.get(confidence, 0) > CONF_RANK.get(str(ceiling).capitalize(), 0)
 
 
 def deal_metric_gaps(computed):
@@ -142,6 +148,13 @@ def validate(text):
                 "Confidence is High but computed inputs show coverage gaps. Lower it and "
                 "name what you could not see."
             )
+    if computed and confidence and confidence_exceeds_ceiling(confidence, computed):
+        ceiling = (computed.get("confidence") or {}).get("max_label")
+        reasons = ", ".join((computed.get("confidence") or {}).get("reason_codes") or [])
+        errors.append(
+            f"Confidence is {confidence} but computed inputs cap confidence at {ceiling}"
+            + (f" ({reasons})." if reasons else ".")
+        )
 
     if computed:
         gaps = set(deal_metric_gaps(computed))

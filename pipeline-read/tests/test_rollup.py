@@ -55,6 +55,9 @@ def main():
     ok &= check("portfolio: single_threaded count", p["single_threaded"] == 1)
     ok &= check("portfolio: slipped_or_overdue counts a deal once", p["slipped_or_overdue"] == 1)
     ok &= check("portfolio: stale_data_deals count", p["stale_data_deals"] == 1)
+    ok &= check("confidence: stale pipeline caps at Low",
+                out["confidence"]["max_label"] == "Low"
+                and "stale_data" in out["confidence"]["reason_codes"])
 
     # Tie-break: same tier + flag count -> larger Added ARR ranks first.
     tie = run({"deals": [
@@ -120,6 +123,9 @@ def main():
                 next(r for r in with_gap["ranking"] if r["name"] == "Acme")["coverage_gaps"] == [])
     ok &= check("coverage gap: ranking order unchanged vs no-gap bundle",
                 [r["name"] for r in with_gap["ranking"]] == [r["name"] for r in no_gap["ranking"]])
+    ok &= check("confidence: email coverage gap caps at Low",
+                with_gap["confidence"]["max_label"] == "Low"
+                and "email_coverage_gap" in with_gap["confidence"]["reason_codes"])
 
     calendar_gap = gap_deal("Calendar Gap", 60000, 12, {})
     calendar_gap["analyze_output"]["deal_metrics"]["calendar"] = {
@@ -142,6 +148,9 @@ def main():
     ok &= check("source gaps: ranked rows carry non-risk gaps",
                 next(r for r in gap_sources["ranking"] if r["name"] == "Calendar Gap")["coverage_gaps"] == ["calendar_unavailable"]
                 and next(r for r in gap_sources["ranking"] if r["name"] == "Internal Gap")["coverage_gaps"] == ["deal_room_missing"])
+    ok &= check("confidence: non-email source gaps cap at Medium",
+                gap_sources["confidence"]["max_label"] == "Medium"
+                and set(gap_sources["confidence"]["reason_codes"]) == {"calendar_gap", "internal_gap"})
 
     # Backward compat: a bundle with no coverage_gaps/freshness yields empty gaps + null last_touch.
     legacy = run({"mode": "read", "deals": [deal("Legacy", 10000, 5, {"single_threaded": True})]})

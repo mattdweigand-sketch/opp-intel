@@ -99,6 +99,9 @@ def main():
     ok &= check("internal: source-backed signal preserved", len(internal["signals"]) == 1)
     ok &= check("internal: signal source ref preserved",
                 internal["signals"][0]["source_ref"] == "drive:doc-1")
+    ok &= check("confidence: internal gap caps at Medium",
+                r["confidence"]["max_label"] == "Medium"
+                and "internal_gap" in r["confidence"]["reason_codes"])
 
     r = run({
         "compute_input": {},
@@ -145,6 +148,9 @@ def main():
                 "email_connector_degraded" in r["deal_metrics"]["coverage_gaps"])
     ok &= check("connector status: degraded email neutralizes stale flag",
                 r["deal_metrics"]["flags"]["email_data_stale"] is False)
+    ok &= check("confidence: degraded email caps at Low",
+                r["confidence"]["max_label"] == "Low"
+                and "email_coverage_gap" in r["confidence"]["reason_codes"])
 
     r = run({
         "compute_input": {},
@@ -180,6 +186,8 @@ def main():
     ok &= check("NW1-like: Slack room found via Slack proof",
                 r["internal_evidence"]["deal_room"]["coverage"] == "found"
                 and r["internal_evidence"]["source_gaps"] == [])
+    ok &= check("NW1-like: clean coverage can be High",
+                r["confidence"]["max_label"] == "High")
 
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})

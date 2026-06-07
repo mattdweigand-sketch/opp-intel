@@ -1,0 +1,19 @@
+{
+  "_comment": "Chosen confidence-ceiling policy. This is not win probability. It only caps how certain a brief may sound given source coverage and freshness.",
+  "labels": ["Low", "Medium", "High"],
+  "deal": {
+    "low_reason_codes": ["email_data_stale", "email_coverage_gap"],
+    "medium_reason_codes": ["coverage_gap", "calendar_gap", "internal_gap", "connector_degraded"],
+    "high_requires": ["no_email_data_stale", "no_coverage_gaps"]
+  },
+  "pipeline": {
+    "low_reason_codes": ["stale_data", "email_coverage_gap"],
+    "medium_reason_codes": ["coverage_gap", "calendar_gap", "internal_gap", "connector_degraded"],
+    "high_requires": ["no_stale_data", "no_coverage_gaps"]
+  },
+  "hygiene": {
+    "low_reason_codes": ["salesforce_coverage_gap"],
+    "medium_reason_codes": ["coverage_gap"],
+    "high_requires": ["salesforce_read_clean"]
+  }
+}

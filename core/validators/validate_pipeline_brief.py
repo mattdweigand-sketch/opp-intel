@@ -17,6 +17,7 @@ import sys
 SCHEMA_VERSION = "pipeline-read.computed-inputs.v1"
 CONF_RE = re.compile(r"Confidence:\s*\**\s*(High|Medium|Low)", re.IGNORECASE)
 JSON_BLOCK_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL)
+CONF_RANK = {"Low": 1, "Medium": 2, "High": 3}
 FORECAST_SECTIONS = [
     "Review scope",
     "Internal evidence",
@@ -54,6 +55,13 @@ def find_computed_block(text):
 def find_confidence(text):
     m = CONF_RE.search(text)
     return m.group(1).capitalize() if m else None
+
+
+def confidence_exceeds_ceiling(confidence, computed):
+    ceiling = (computed.get("confidence") or {}).get("max_label")
+    if not ceiling:
+        return False
+    return CONF_RANK.get(confidence, 0) > CONF_RANK.get(str(ceiling).capitalize(), 0)
 
 
 def has_section(text, heading):
@@ -231,6 +239,13 @@ def validate(text):
         errors.append(
             "Confidence is High but the roll-up reports coverage gaps (connectors under-collected). "
             "Lower it and name what you could not see."
+        )
+    if confidence and confidence_exceeds_ceiling(confidence, computed):
+        ceiling = (computed.get("confidence") or {}).get("max_label")
+        reasons = ", ".join((computed.get("confidence") or {}).get("reason_codes") or [])
+        errors.append(
+            f"Confidence is {confidence} but computed inputs cap confidence at {ceiling}"
+            + (f" ({reasons})." if reasons else ".")
         )
 
     if (

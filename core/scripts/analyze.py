@@ -22,6 +22,7 @@ import subprocess
 import sys
 
 from coverage_manifest import validate_bundle_coverage
+from confidence import deal_confidence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -224,12 +225,14 @@ def main():
     if tf and os.path.exists(tf):
         call_execution = run_script("callstats.py", args=[bundle.get("rep_name", ""), tf])
 
+    internal_evidence = normalize_internal_evidence(bundle.get("internal_evidence"))
     out = {
         "deal_metrics": deal_metrics,
         "call_execution": call_execution,
         "account_history": account_history(bundle.get("prior_opps")),
         "calendar_evidence": calendar_evidence,
-        "internal_evidence": normalize_internal_evidence(bundle.get("internal_evidence")),
+        "internal_evidence": internal_evidence,
+        "confidence": deal_confidence(deal_metrics, calendar_evidence, internal_evidence),
         "coverage_manifest": coverage_manifest,
     }
     json.dump(out, sys.stdout, indent=2)

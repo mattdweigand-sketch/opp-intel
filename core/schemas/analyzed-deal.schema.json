@@ -9,6 +9,15 @@
     "account_history": { "type": "object" },
     "calendar_evidence": { "type": ["object", "null"] },
     "internal_evidence": { "type": ["object", "null"] },
+    "confidence": {
+      "type": "object",
+      "properties": {
+        "max_label": { "enum": ["Low", "Medium", "High"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "coverage_gaps": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
     "source_gaps": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": true

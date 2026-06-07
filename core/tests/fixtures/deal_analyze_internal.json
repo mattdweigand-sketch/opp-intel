@@ -203,6 +203,13 @@
       ],
       "source_gaps": []
     },
+    "confidence": {
+      "max_label": "Low",
+      "reason_codes": [
+        "email_data_stale"
+      ],
+      "coverage_gaps": []
+    },
     "coverage_manifest": {
       "profile": null,
       "expected_sources": [],

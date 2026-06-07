@@ -60,7 +60,7 @@ Gmail draft policy.
 - **`scripts/analyze.py`** — the single processing entrypoint. Feed it one bundle of the raw data you
   gathered; it first validates `coverage_manifest` / `source_reads`, then runs `compute.py` +
   `callstats.py`, parses account history, and normalizes Slack/Drive internal evidence, returning every
-  metric, flag, source gap, and the prior-loss summary. Do not stitch these yourself.
+  metric, flag, source gap, confidence ceiling, and the prior-loss summary. Do not stitch these yourself.
 - **`../core/config/risk-model.json`** — chosen framework: scored dimensions, status enum, thresholds,
   discovery checklist. To change the model, edit this file.
 - **`../core/config/sf-fields.json`** — chosen Salesforce field/query mapping. To retarget another org, edit this.
@@ -238,8 +238,8 @@ writing-style skill for voice. Structure:
 ```
 Deal: <Name> — <Stage>, <Added ARR from Added_ARR__c>, closes <date> (<N> days out, <age> old)
 
-Confidence: <High / Medium / Low> — <one clause on what it rests on, e.g. "Low: one call, no email
-thread, and email data flagged stale.">
+Confidence: <High / Medium / Low> — <one clause on what it rests on; never exceed
+`computed.confidence.max_label`.>
 
 Read: <2–3 sentences. Honest momentum call. Is this deal where the stage says it is?>
 
@@ -277,9 +277,9 @@ Rules:
 - Actions are specific and assignable: "Email <name> to get the security review scheduled before
   <date>", not "build more urgency."
 - Lead with the action, then the rationale. Keep it tight — a rep should read it in under two minutes.
-- **Calibrate confidence to evidence, and lead with it.** The `Confidence` line is required. Rate Low
-  when you have a single call, no live email thread, or `flags.email_data_stale` is true; Medium on
-  partial coverage; High only with corroborating calls + emails + SF all current. Do not write
+- **Calibrate confidence from computed inputs, and lead with it.** The `Confidence` line is required.
+  Use `confidence.max_label` from `analyze.py` as the ceiling. You may choose a lower label if the
+  narrative evidence is thin, but you may not exceed the computed ceiling. Do not write
   authoritative-sounding risks on thin or stale data — name what you couldn't see instead.
 - **The Computed inputs footer is required in the draft** (review mode). Paste `analyze.py`'s verbatim
   output into the `Computed inputs` ```json fence. It's the audit trail proving the deterministic steps

@@ -22,6 +22,7 @@ Coverage proof rules:
 - Missing expected source-read proof hard-fails before analysis; degraded source statuses become coverage gaps.
 - Gmail absence/recency claims require company-domain search proof and either the newest matching company-domain thread id or `domain_thread_search_status=no_match`.
 - Slack absence/activity claims require Slack MCP proof: `slack_mcp_checked`, searched channels, channel matches, and a Slack-source deal-room reference when found.
+- Confidence must not exceed `confidence.max_label` from computed inputs.
 - Do not cite Salesforce as evidence for Slack room existence, Slack activity, or Slack absence.
 - Deal and pipeline outputs must include computed-inputs evidence and pass their validator before presentation.
 

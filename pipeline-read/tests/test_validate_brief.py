@@ -98,6 +98,18 @@ def main():
                   "Computed inputs:\n" + gap_footer())
     ok &= check("High + coverage gap fails", rc == 1 and "coverage gap" in out.lower())
 
+    ceiling_obj = {
+        "schema_version": "pipeline-read.computed-inputs.v1",
+        "run": {"mode": "read"},
+        "portfolio": {"deal_count": 1, "stale_data_deals": 0},
+        "ranking": [{"name": "Acme", "severity_tier": "none", "risk_flags": []}],
+        "confidence": {"max_label": "Low", "reason_codes": ["email_coverage_gap"]},
+    }
+    rc, out = run("Confidence: Medium, partial coverage.\n\nComputed inputs:\n```json\n"
+                  + json.dumps(ceiling_obj) + "\n```")
+    ok &= check("confidence above computed ceiling fails",
+                rc == 1 and "cap confidence at Low" in out)
+
     rc, out = run("Confidence: Medium, partial coverage.\n\n"
                   "Where you're blind: Acme email thread search under-collected.\n\n"
                   "Acme has no rep outbound since Apr 21.\n\nComputed inputs:\n" + gap_footer())

@@ -113,7 +113,8 @@
           "latest_sent_probe_date": null,
           "searched_domains": []
         },
-        "coverage_gaps": []
+        "coverage_gaps": [],
+        "confidence": {}
       },
       {
         "opportunity_id": null,
@@ -143,10 +144,19 @@
           "latest_sent_probe_date": null,
           "searched_domains": []
         },
-        "coverage_gaps": []
+        "coverage_gaps": [],
+        "confidence": {}
       }
     ],
     "source_gaps": [],
+    "confidence": {
+      "max_label": "Low",
+      "reason_codes": [
+        "stale_data"
+      ],
+      "coverage_gap_deals": [],
+      "source_gaps": []
+    },
     "severity_tiers_used": {
       "red": [
         "overdue_close",
