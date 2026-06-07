@@ -182,6 +182,31 @@ def main():
     r = run({})
     ok &= check("empty: flags all False", all(v is False for v in r["flags"].values()))
 
+    r = run({
+        "today": "2026-06-06",
+        "observed_participants": ["solo@prospect.com"],
+        "email_coverage": {
+            "contact_domains": ["prospect.com"],
+            "searched_domains": ["prospect.com"],
+        },
+    })
+    ok &= check("email coverage: newest domain thread proof required",
+                "email_newest_thread_coverage_gap" in r["coverage_gaps"])
+    ok &= check("email coverage: newest thread gap suppresses single-thread without SF basis",
+                r["flags"]["single_threaded"] is False)
+
+    r = run({
+        "today": "2026-06-06",
+        "observed_participants": ["solo@prospect.com"],
+        "email_coverage": {
+            "contact_domains": ["prospect.com"],
+            "searched_domains": ["prospect.com"],
+            "domain_thread_search_status": "no_match",
+        },
+    })
+    ok &= check("email coverage: no-match domain proof avoids newest-thread gap",
+                "email_newest_thread_coverage_gap" not in r["coverage_gaps"])
+
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))
     sys.exit(0 if ok else 1)
 

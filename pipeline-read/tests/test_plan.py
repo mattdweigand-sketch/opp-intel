@@ -134,7 +134,8 @@ def main():
                 full["gmail"]["source_contract"]["source_of_truth"] == "gmail")
     ok &= check("per-deal: gmail coverage proof fields emitted",
                 full["gmail"]["coverage_requirements"]["searched_domains_bundle_field"] == "email_coverage.searched_domains"
-                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id")
+                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id"
+                and full["gmail"]["coverage_requirements"]["domain_thread_search_status_bundle_field"] == "email_coverage.domain_thread_search_status")
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("per-deal: calendar source contract owns Calendar truth",
                 full["calendar"]["source_contract"]["source_of_truth"] == "google_calendar")

@@ -30,6 +30,10 @@ def footer_with_gaps(gaps):
     }) + "\n```"
 
 
+def full_footer(obj):
+    return "```json\n" + json.dumps(obj) + "\n```"
+
+
 def main():
     ok = True
 
@@ -67,6 +71,48 @@ def main():
         "Computed inputs:\n" + footer_with_gaps(["email_connector_degraded"])
     )
     ok &= check("High + coverage gap fails", rc == 1 and "coverage gaps" in out)
+
+    rc, out = run(
+        "Confidence: Medium, no live email thread.\n\n"
+        "Computed inputs:\n" + footer_with_gaps(["email_domain_coverage_gap"])
+    )
+    ok &= check("email absence claim + email gap fails",
+                rc == 1 and "email coverage gaps" in out)
+
+    slack_gap_footer = {
+        "deal_metrics": {"flags": {"email_data_stale": False}, "coverage_gaps": []},
+        "internal_evidence": {"deal_room": {"coverage": "checked_no_match"}, "source_gaps": ["slack_coverage_unproven"]},
+    }
+    rc, out = run(
+        "Confidence: Medium, no Slack room found.\n\n"
+        "Computed inputs:\n" + full_footer(slack_gap_footer)
+    )
+    ok &= check("Slack absence claim without Slack MCP proof fails",
+                rc == 1 and "Slack MCP coverage" in out)
+
+    slack_clean_footer = {
+        "deal_metrics": {"flags": {"email_data_stale": False}, "coverage_gaps": []},
+        "internal_evidence": {
+            "deal_room": {
+                "coverage": "checked_no_match",
+                "slack_mcp_checked": True,
+                "slack_channels_searched": ["acme"],
+            },
+            "source_gaps": ["checked_no_match"],
+        },
+    }
+    rc, _ = run(
+        "Confidence: Medium, no Slack room found after Slack MCP channel search.\n\n"
+        "Computed inputs:\n" + full_footer(slack_clean_footer)
+    )
+    ok &= check("Slack absence claim with clean Slack MCP proof passes", rc == 0)
+
+    rc, out = run(
+        "Confidence: Medium, Salesforce shows no Slack room.\n\n"
+        "Computed inputs:\n" + full_footer(slack_clean_footer)
+    )
+    ok &= check("Salesforce-as-Slack evidence fails",
+                rc == 1 and "Slack/deal-room truth" in out)
 
     # Missing confidence line fails.
     rc, out = run("Computed inputs:\n" + footer({"email_data_stale": False}))

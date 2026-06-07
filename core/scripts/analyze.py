@@ -83,6 +83,20 @@ def normalize_internal_evidence(raw):
 
     deal_room = raw.get("deal_room") or {}
     coverage = deal_room.get("coverage") or raw.get("coverage")
+    source = deal_room.get("source")
+    source_ref = deal_room.get("source_ref")
+    slack_mcp_checked = bool(raw.get("slack_mcp_checked") or deal_room.get("slack_mcp_checked"))
+    slack_channels_searched = first_list(
+        raw.get("slack_channels_searched"),
+        deal_room.get("slack_channels_searched"),
+    )
+    slack_channel_matches = first_list(
+        raw.get("slack_channel_matches"),
+        deal_room.get("slack_channel_matches"),
+    )
+
+    if coverage == "mapped" and source == "slack" and str(source_ref or "").startswith("slack:"):
+        coverage = "found"
 
     linked_docs = []
     for doc in raw.get("linked_docs") or []:
@@ -108,6 +122,14 @@ def normalize_internal_evidence(raw):
         })
 
     source_gaps = list(raw.get("source_gaps") or [])
+    slack_claimed = coverage in {"found", "mapped", "deal_room_missing", "checked_no_match"}
+    if slack_claimed and not slack_mcp_checked:
+        source_gaps.append("slack_coverage_unproven")
+    if coverage == "found":
+        if source != "slack" or not str(source_ref or "").startswith("slack:"):
+            source_gaps.append("slack_non_slack_source")
+    if coverage in {"deal_room_missing", "checked_no_match"} and not slack_channels_searched:
+        source_gaps.append("slack_channel_search_missing")
     if coverage in {"deal_room_missing", "checked_no_match", "unavailable"}:
         source_gaps.append(coverage)
     for doc in linked_docs:
@@ -117,9 +139,12 @@ def normalize_internal_evidence(raw):
     return {
         "mode": raw.get("mode"),
         "deal_room": {
-            "source": deal_room.get("source"),
+            "source": source,
             "coverage": coverage,
-            "source_ref": deal_room.get("source_ref"),
+            "source_ref": source_ref,
+            "slack_mcp_checked": slack_mcp_checked,
+            "slack_channels_searched": slack_channels_searched,
+            "slack_channel_matches": slack_channel_matches,
         },
         "linked_docs": linked_docs,
         "signals": signals,

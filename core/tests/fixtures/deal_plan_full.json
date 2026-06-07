@@ -101,7 +101,8 @@
         "searched_domains_bundle_field": "email_coverage.searched_domains",
         "contact_domains_bundle_field": "email_coverage.contact_domains",
         "newest_thread_bundle_field": "email_coverage.newest_domain_thread_id",
-        "newest_thread_rule": "Read get_thread on the most recent matching company-domain thread before recency claims."
+        "domain_thread_search_status_bundle_field": "email_coverage.domain_thread_search_status",
+        "newest_thread_rule": "Read get_thread on the most recent matching company-domain thread before recency claims; if domain search returns no matches, record domain_thread_search_status=no_match."
       },
       "sent_freshness": "in:sent newer_than:90d",
       "thread_search": "from:(a@x.com OR b@x.com) OR to:(a@x.com OR b@x.com) newer_than:90d",
@@ -267,7 +268,15 @@
         ],
         "max_messages": 80,
         "broad_search_allowed": false,
-        "requires_internal_force": false
+        "requires_internal_force": false,
+        "coverage_requirements": {
+          "checked_bundle_field": "internal_evidence.slack_mcp_checked",
+          "searched_channels_bundle_field": "internal_evidence.slack_channels_searched",
+          "channel_matches_bundle_field": "internal_evidence.slack_channel_matches",
+          "deal_room_coverage_bundle_field": "internal_evidence.deal_room.coverage",
+          "deal_room_source_ref_bundle_field": "internal_evidence.deal_room.source_ref",
+          "clean_negative_rule": "Only claim no Slack room/activity after Slack MCP channel search completed and searched channels are recorded."
+        }
       },
       "linked_docs": {
         "source": "google_drive",

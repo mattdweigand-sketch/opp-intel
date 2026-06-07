@@ -71,7 +71,10 @@ def main():
         "compute_input": {},
         "internal_evidence": {
             "mode": "auto",
-            "deal_room": {"source": "slack", "coverage": "mapped", "source_ref": "slack:C123"},
+            "slack_mcp_checked": True,
+            "slack_channels_searched": ["nw1", "nw1-partners"],
+            "slack_channel_matches": ["nw1"],
+            "deal_room": {"source": "slack", "coverage": "found", "source_ref": "slack:C123"},
             "linked_docs": [
                 {"source": "google_drive", "title": "Proposal v3", "coverage": "read",
                  "source_ref": "drive:doc-1"},
@@ -86,7 +89,10 @@ def main():
         },
     })
     internal = r["internal_evidence"]
-    ok &= check("internal: deal room mapped", internal["deal_room"]["coverage"] == "mapped")
+    ok &= check("internal: deal room found", internal["deal_room"]["coverage"] == "found")
+    ok &= check("internal: Slack MCP proof preserved",
+                internal["deal_room"]["slack_mcp_checked"] is True
+                and internal["deal_room"]["slack_channels_searched"] == ["nw1", "nw1-partners"])
     ok &= check("internal: linked docs preserved", len(internal["linked_docs"]) == 2)
     ok &= check("internal: unavailable linked doc gap",
                 "linked_doc_unavailable" in internal["source_gaps"])
@@ -148,6 +154,32 @@ def main():
                 r["internal_evidence"]["deal_room"]["coverage"] == "deal_room_missing")
     ok &= check("internal: missing room gap",
                 "deal_room_missing" in r["internal_evidence"]["source_gaps"])
+    ok &= check("internal: missing Slack proof gap",
+                "slack_coverage_unproven" in r["internal_evidence"]["source_gaps"])
+
+    r = run({
+        "compute_input": {
+            "today": "2026-06-06",
+            "observed_participants": ["vanda@nw1.com"],
+        },
+        "email_coverage": {
+            "contact_domains": ["nw1.com"],
+            "searched_domains": ["nw1.com"],
+            "newest_domain_thread_id": "gmail:thread-20260605",
+        },
+        "internal_evidence": {
+            "mode": "auto",
+            "slack_mcp_checked": True,
+            "slack_channels_searched": ["nw1", "nw1-partners"],
+            "slack_channel_matches": ["nw1"],
+            "deal_room": {"source": "slack", "coverage": "found", "source_ref": "slack:Cnw1"},
+        },
+    })
+    ok &= check("NW1-like: Gmail newest-domain proof avoids coverage gap",
+                "email_newest_thread_coverage_gap" not in r["deal_metrics"]["coverage_gaps"])
+    ok &= check("NW1-like: Slack room found via Slack proof",
+                r["internal_evidence"]["deal_room"]["coverage"] == "found"
+                and r["internal_evidence"]["source_gaps"] == [])
 
     # Empty-ish bundle: null-safe, no prior history.
     r = run({"compute_input": {}})

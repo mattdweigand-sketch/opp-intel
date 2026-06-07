@@ -30,9 +30,44 @@
     },
     "salesforce_evidence": { "type": "object" },
     "email_evidence": { "type": "object" },
+    "email_coverage": {
+      "type": "object",
+      "properties": {
+        "searched_emails": { "type": "array", "items": { "type": "string" } },
+        "contact_union_emails": { "type": "array", "items": { "type": "string" } },
+        "searched_domains": { "type": "array", "items": { "type": "string" } },
+        "contact_domains": { "type": "array", "items": { "type": "string" } },
+        "newest_domain_thread_id": { "type": ["string", "null"] },
+        "domain_thread_search_status": { "type": ["string", "null"], "enum": ["found", "no_match", "error", "partial", null] }
+      },
+      "additionalProperties": true
+    },
     "calendar_evidence": { "type": "object" },
     "call_evidence": { "type": "object" },
-    "internal_evidence": { "type": "object" },
+    "internal_evidence": {
+      "type": "object",
+      "properties": {
+        "slack_mcp_checked": { "type": "boolean" },
+        "slack_channels_searched": { "type": "array", "items": { "type": "string" } },
+        "slack_channel_matches": { "type": "array", "items": { "type": "string" } },
+        "deal_room": {
+          "type": "object",
+          "properties": {
+            "source": { "type": ["string", "null"], "enum": ["slack", null] },
+            "coverage": {
+              "type": ["string", "null"],
+              "enum": ["found", "deal_room_missing", "checked_no_match", "unavailable", "mapped", null]
+            },
+            "source_ref": { "type": ["string", "null"] },
+            "slack_mcp_checked": { "type": "boolean" },
+            "slack_channels_searched": { "type": "array", "items": { "type": "string" } },
+            "slack_channel_matches": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "source_gaps": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": true

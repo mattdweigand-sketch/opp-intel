@@ -21,9 +21,17 @@
     ],
     "internal_evidence": {
       "mode": "auto",
+      "slack_mcp_checked": true,
+      "slack_channels_searched": [
+        "x",
+        "x-account"
+      ],
+      "slack_channel_matches": [
+        "x-account"
+      ],
       "deal_room": {
         "source": "slack",
-        "coverage": "mapped",
+        "coverage": "found",
         "source_ref": "slack:C123"
       },
       "linked_docs": [
@@ -88,7 +96,9 @@
         "unanswered_rep_emails": 0,
         "median_response_latency_days": null,
         "latest_sent_probe_date": null,
-        "searched_domains": []
+        "searched_domains": [],
+        "newest_domain_thread_id": null,
+        "domain_thread_search_status": null
       },
       "calendar": {
         "coverage": "available",
@@ -164,8 +174,16 @@
       "mode": "auto",
       "deal_room": {
         "source": "slack",
-        "coverage": "mapped",
-        "source_ref": "slack:C123"
+        "coverage": "found",
+        "source_ref": "slack:C123",
+        "slack_mcp_checked": true,
+        "slack_channels_searched": [
+          "x",
+          "x-account"
+        ],
+        "slack_channel_matches": [
+          "x-account"
+        ]
       },
       "linked_docs": [
         {

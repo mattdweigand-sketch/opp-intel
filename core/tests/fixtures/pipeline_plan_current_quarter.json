@@ -118,7 +118,15 @@
         "window_days": 30,
         "max_messages": 40,
         "broad_search_allowed": true,
-        "requires_internal_force": true
+        "requires_internal_force": true,
+        "coverage_requirements": {
+          "checked_bundle_field": "internal_evidence.slack_mcp_checked",
+          "searched_channels_bundle_field": "internal_evidence.slack_channels_searched",
+          "channel_matches_bundle_field": "internal_evidence.slack_channel_matches",
+          "deal_room_coverage_bundle_field": "internal_evidence.deal_room.coverage",
+          "deal_room_source_ref_bundle_field": "internal_evidence.deal_room.source_ref",
+          "clean_negative_rule": "Only claim no Slack room/activity after Slack MCP channel search completed and searched channels are recorded."
+        }
       },
       "linked_docs": {
         "source": "google_drive",

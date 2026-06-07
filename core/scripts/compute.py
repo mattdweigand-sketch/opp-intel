@@ -230,6 +230,15 @@ def main():
     email_domain_coverage_gap = bool(contact_domains and not contact_domains.issubset(searched_domains))
     if email_domain_coverage_gap:
         coverage_gaps.append("email_domain_coverage_gap")
+    newest_domain_thread_id = email_coverage.get("newest_domain_thread_id")
+    domain_thread_search_status = str(email_coverage.get("domain_thread_search_status") or "").strip().lower()
+    email_newest_thread_coverage_gap = bool(
+        contact_domains
+        and not newest_domain_thread_id
+        and domain_thread_search_status != "no_match"
+    )
+    if email_newest_thread_coverage_gap:
+        coverage_gaps.append("email_newest_thread_coverage_gap")
 
     # A degraded connector (timeout/error/partial) produces a coverage gap, never a
     # finding. Coverage gaps are NOT risk flags: they drive confidence/blindness
@@ -268,6 +277,7 @@ def main():
         or email_thread_coverage_gap
         or email_contact_union_gap
         or email_domain_coverage_gap
+        or email_newest_thread_coverage_gap
     )
     if email_absence_unreliable:
         days_since_last_inbound = None
@@ -427,6 +437,8 @@ def main():
                 "median_response_latency_days": median_response_latency_days,
                 "latest_sent_probe_date": latest_sent_probe.isoformat() if latest_sent_probe else None,
                 "searched_domains": sorted(searched_domains),
+                "newest_domain_thread_id": newest_domain_thread_id,
+                "domain_thread_search_status": domain_thread_search_status or None,
             },
             "calendar": {
                 "coverage": calendar_coverage,

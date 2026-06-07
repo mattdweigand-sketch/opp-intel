@@ -65,8 +65,9 @@ Gmail draft policy.
 - **`scripts/compute.py` / `scripts/callstats.py`** — deterministic metrics, invoked by
   `scripts/analyze.py`. Don't call them directly.
 - **`scripts/validate_brief.py`** — the output-contract gate. Pipe your drafted brief (review mode) into
-  it before presenting: it confirms the `Computed inputs` footer is present and parseable and that
-  Confidence isn't High on stale email data. A non-zero exit means fix the brief, don't ship it.
+  it before presenting: it confirms the `Computed inputs` footer is present and parseable, Confidence
+  isn't High on stale or incomplete coverage, and absence claims do not outrun Gmail/Slack coverage
+  proof. A non-zero exit means fix the brief, don't ship it.
 
 ## Pipeline
 
@@ -118,7 +119,12 @@ user states otherwise; if genuinely unknown, ask once.
 2. `get_thread` (FULL_CONTENT) on the live threads. Read for substance — questions raised, stalls,
    redirects, internal-forwarding (new names). Build the email list (direction + date per message) that
    feeds `analyze.py`; it computes latency, unanswered count, and last-inbound deterministically.
-3. **Freshness is computed, not eyeballed.** `analyze.py` sets `deal_metrics.flags.email_data_stale`
+3. Add `email_coverage` to the `analyze.py` bundle with `searched_emails`,
+   `contact_union_emails`, `searched_domains`, `contact_domains`, `newest_domain_thread_id`, and
+   `domain_thread_search_status`. If the newest matching domain thread was not read, and the domain
+   search was not recorded as `no_match`, the brief cannot claim no current email thread, stale email
+   activity, or prospect silence.
+4. **Freshness is computed, not eyeballed.** `analyze.py` sets `deal_metrics.flags.email_data_stale`
    when the activity anchor (SF `LastActivityDate` or newest Zoom call, fed as `latest_call_date`) is
    more than `freshness_gap_days` newer than the newest email found. When it's true, your email view is
    lagging reality: say so, lower confidence, and do NOT assert a follow-up is owed or that the deal
@@ -140,7 +146,10 @@ as `internal_evidence`. Use this shape:
 ```json
 {
   "mode": "auto|force",
-  "deal_room": {"source": "slack", "coverage": "mapped|deal_room_missing|checked_no_match|unavailable", "source_ref": "..."},
+  "slack_mcp_checked": true,
+  "slack_channels_searched": ["nw1", "nw1-partners"],
+  "slack_channel_matches": ["nw1"],
+  "deal_room": {"source": "slack", "coverage": "found|deal_room_missing|checked_no_match|unavailable", "source_ref": "slack:<channel-or-message-id>"},
   "linked_docs": [{"source": "google_drive", "title": "...", "coverage": "read|unavailable|skipped", "source_ref": "..."}],
   "signals": [{"type": "...", "summary": "...", "source_ref": "...", "confidence": "high|medium|low"}],
   "source_gaps": []
@@ -148,17 +157,19 @@ as `internal_evidence`. Use this shape:
 ```
 
 `analyze.py` keeps only source-backed signals and turns missing rooms or unavailable linked docs into
-explicit `internal_evidence.source_gaps` in the computed footer. Slack and Drive evidence can affect
+explicit `internal_evidence.source_gaps` in the computed footer. A Slack clean negative requires
+`slack_mcp_checked=true` plus the searched channel list; otherwise `analyze.py` marks Slack coverage
+unproven and `validate_brief.py` blocks "no Slack room" claims. Slack and Drive evidence can affect
 confidence, source gaps, risk notes, and next-move wording. It cannot override Salesforce-owned fields
-(Added ARR from `Added_ARR__c`, stage, close date, owner), which stay deterministic. Pass `"internal": "off"` to skip Slack
-and Drive entirely.
+(Added ARR from `Added_ARR__c`, stage, close date, owner), which stay deterministic. Pass
+`"internal": "off"` to skip Slack and Drive entirely.
 
 ### 4. Score the deal-risk model
 
 **First, run `analyze.py` once.** Assemble the bundle and pipe it in:
 `python3 <skill-dir>/scripts/analyze.py < bundle.json`. The bundle is:
 `{"rep_name", "compute_input": {...}, "transcript_file": "<path or omit>", "prior_opps": [...],
-"calendar_evidence": {...}, "internal_evidence": {...}}`.
+"calendar_evidence": {...}, "email_coverage": {...}, "internal_evidence": {...}, "connector_status": {...}}`.
 For `compute_input`, do NOT pre-count `contacts_engaged` yourself. Pass `observed_participants` (the list
 of prospect-side people you saw: Zoom attendees and email senders/recipients on the prospect's domain)
 and `logged_contact_roles` (the count from `getRelatedRecords`). `compute.py` dedups the list and applies
@@ -270,8 +281,9 @@ Rules:
   real and parseable for the gate to pass.
 - **Validate, then present what the gate emits** (review mode). Pipe the finished brief (with the full
   JSON footer) into `python3 <skill-dir>/scripts/validate_brief.py`. It enforces the two rules above in
-  code: footer present and parseable, no High confidence on stale email data. On failure it exits
-  non-zero with reasons — fix them and re-run; never present a brief that fails the gate. On success it
+  code: footer present and parseable, no High confidence on stale/incomplete coverage, no email absence
+  claims when Gmail coverage is incomplete, no Slack absence claims without Slack MCP proof, and no
+  Salesforce-as-Slack evidence. On failure it exits non-zero with reasons — fix them and re-run; never present a brief that fails the gate. On success it
   writes the brief back to stdout with the JSON footer collapsed to a one-line verification stamp inside
   a collapsible `Computed inputs` block. **Present that stdout verbatim** — do not paste the raw JSON
   yourself. The reader sees only the pass stamp; the code, not you, owns the redaction.

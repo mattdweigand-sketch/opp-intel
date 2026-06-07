@@ -31,6 +31,22 @@ import sys
 
 CONF_RE = re.compile(r"Confidence:\s*\**\s*(High|Medium|Low)", re.IGNORECASE)
 JSON_BLOCK_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL)
+EMAIL_ABSENCE_RE = re.compile(
+    r"\b(no|without|lack(?:s|ing)?|missing)\b.{0,50}\b(email|gmail|thread|inbound|reply|conversation)\b"
+    r"|\b(email|gmail|thread|inbound|reply|conversation)\b.{0,50}\b(stale|quiet|silent|no activity|no evidence|missing)\b"
+    r"|\bwent quiet\b",
+    re.IGNORECASE | re.DOTALL,
+)
+SLACK_ABSENCE_RE = re.compile(
+    r"\b(no|without|lack(?:s|ing)?|missing)\b.{0,60}\b(slack|deal room|deal-room|channel)\b"
+    r"|\b(slack|deal room|deal-room|channel)\b.{0,60}\b(not found|missing|absent|no activity|quiet|silent)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+SALESFORCE_SLACK_RE = re.compile(
+    r"\bsalesforce\b.{0,80}\b(slack|deal room|deal-room)\b"
+    r"|\b(slack|deal room|deal-room)\b.{0,80}\bsalesforce\b",
+    re.IGNORECASE | re.DOTALL,
+)
 # A "Computed inputs" label line immediately preceding the footer fence, so the
 # render can absorb it along with the JSON it introduces.
 COMPUTED_LABEL_RE = re.compile(
@@ -67,6 +83,30 @@ def find_confidence(text):
     return m.group(1).capitalize() if m else None
 
 
+def deal_metric_gaps(computed):
+    metrics = computed.get("deal_metrics") or {}
+    gaps = list(metrics.get("coverage_gaps") or [])
+    gaps.extend((metrics.get("calendar") or {}).get("source_gaps") or [])
+    return gaps
+
+
+def internal_gaps(computed):
+    return list((computed.get("internal_evidence") or {}).get("source_gaps") or [])
+
+
+def slack_cleanly_checked(computed):
+    internal = computed.get("internal_evidence") or {}
+    room = internal.get("deal_room") or {}
+    source_gaps = set(internal_gaps(computed))
+    if source_gaps.intersection({"slack_coverage_unproven", "slack_channel_search_missing", "slack_non_slack_source"}):
+        return False
+    if room.get("slack_mcp_checked") is not True:
+        return False
+    if not room.get("slack_channels_searched"):
+        return False
+    return room.get("coverage") in {"found", "checked_no_match", "deal_room_missing"}
+
+
 def validate(text):
     errors = []
 
@@ -91,16 +131,34 @@ def validate(text):
         stale = metrics.get("flags", {}).get("email_data_stale") is True
         coverage_gaps = metrics.get("coverage_gaps") or []
         calendar_gaps = (metrics.get("calendar") or {}).get("source_gaps") or []
-        internal_gaps = (computed.get("internal_evidence") or {}).get("source_gaps") or []
+        internal_source_gaps = internal_gaps(computed)
         if stale:
             errors.append(
                 "Confidence is High but email_data_stale is true. Stale email data cannot "
                 "support a High rating. Lower it and name what you could not see."
             )
-        if coverage_gaps or calendar_gaps or internal_gaps:
+        if coverage_gaps or calendar_gaps or internal_source_gaps:
             errors.append(
                 "Confidence is High but computed inputs show coverage gaps. Lower it and "
                 "name what you could not see."
+            )
+
+    if computed:
+        gaps = set(deal_metric_gaps(computed))
+        email_gaps = {g for g in gaps if str(g).startswith("email_") or g == "activity_coverage_gap"}
+        if email_gaps and EMAIL_ABSENCE_RE.search(text):
+            errors.append(
+                "Brief makes an email absence/staleness claim while computed inputs show email "
+                "coverage gaps. Name the Gmail coverage gap instead."
+            )
+        if SLACK_ABSENCE_RE.search(text) and not slack_cleanly_checked(computed):
+            errors.append(
+                "Brief makes a Slack/deal-room absence claim without a clean Slack MCP coverage "
+                "read in computed inputs."
+            )
+        if SALESFORCE_SLACK_RE.search(text):
+            errors.append(
+                "Brief links Slack evidence to Salesforce. Slack/deal-room truth must come from Slack MCP only."
             )
 
     return errors

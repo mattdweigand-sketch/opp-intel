@@ -302,6 +302,14 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
             "max_messages": out["max_messages"],
             "broad_search_allowed": False,
             "requires_internal_force": False,
+            "coverage_requirements": {
+                "checked_bundle_field": "internal_evidence.slack_mcp_checked",
+                "searched_channels_bundle_field": "internal_evidence.slack_channels_searched",
+                "channel_matches_bundle_field": "internal_evidence.slack_channel_matches",
+                "deal_room_coverage_bundle_field": "internal_evidence.deal_room.coverage",
+                "deal_room_source_ref_bundle_field": "internal_evidence.deal_room.source_ref",
+                "clean_negative_rule": "Only claim no Slack room/activity after Slack MCP channel search completed and searched channels are recorded.",
+            },
         }
         out["linked_docs"] = {
             "source": "google_drive",
@@ -342,6 +350,14 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         "max_messages": out["max_messages"],
         "broad_search_allowed": True,
         "requires_internal_force": True,
+        "coverage_requirements": {
+            "checked_bundle_field": "internal_evidence.slack_mcp_checked",
+            "searched_channels_bundle_field": "internal_evidence.slack_channels_searched",
+            "channel_matches_bundle_field": "internal_evidence.slack_channel_matches",
+            "deal_room_coverage_bundle_field": "internal_evidence.deal_room.coverage",
+            "deal_room_source_ref_bundle_field": "internal_evidence.deal_room.source_ref",
+            "clean_negative_rule": "Only claim no Slack room/activity after Slack MCP channel search completed and searched channels are recorded.",
+        },
     }
     out["linked_docs"] = {
         "source": "google_drive",
@@ -546,7 +562,11 @@ def deal_plan(ctx, profile="pipeline"):
             "searched_domains_bundle_field": "email_coverage.searched_domains",
             "contact_domains_bundle_field": "email_coverage.contact_domains",
             "newest_thread_bundle_field": "email_coverage.newest_domain_thread_id",
-            "newest_thread_rule": "Read get_thread on the most recent matching company-domain thread before recency claims.",
+            "domain_thread_search_status_bundle_field": "email_coverage.domain_thread_search_status",
+            "newest_thread_rule": (
+                "Read get_thread on the most recent matching company-domain thread before recency claims; "
+                "if domain search returns no matches, record domain_thread_search_status=no_match."
+            ),
         },
         "sent_freshness": f"in:sent newer_than:{window}d",
     }

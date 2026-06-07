@@ -53,7 +53,8 @@ def main():
                 full["gmail"]["source_contract"]["source_of_truth"] == "gmail")
     ok &= check("gmail coverage proof fields emitted",
                 full["gmail"]["coverage_requirements"]["searched_domains_bundle_field"] == "email_coverage.searched_domains"
-                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id")
+                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id"
+                and full["gmail"]["coverage_requirements"]["domain_thread_search_status_bundle_field"] == "email_coverage.domain_thread_search_status")
     ok &= check("calendar emitted", full["calendar"]["source"] == "google_calendar")
     ok &= check("calendar source contract owns Calendar truth",
                 full["calendar"]["source_contract"]["source_of_truth"] == "google_calendar")
@@ -90,6 +91,9 @@ def main():
                 and auto["internal_evidence"]["slack"]["connector"] == "slack_mcp"
                 and auto["internal_evidence"]["slack"]["salesforce_mapping_allowed"] is False
                 and auto["internal_evidence"]["slack"]["source_contract"]["source_of_truth"] == "slack")
+    ok &= check("internal auto: Slack coverage proof fields emitted",
+                auto["internal_evidence"]["slack"]["coverage_requirements"]["checked_bundle_field"] == "internal_evidence.slack_mcp_checked"
+                and auto["internal_evidence"]["slack"]["coverage_requirements"]["searched_channels_bundle_field"] == "internal_evidence.slack_channels_searched")
     ok &= check("internal auto: broad search not allowed",
                 auto["internal_evidence"]["broad_search_allowed"] is False
                 and auto["internal_evidence"]["slack"]["broad_search_allowed"] is False)
