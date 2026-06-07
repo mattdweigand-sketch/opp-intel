@@ -94,6 +94,15 @@ The source boundary is intentional and lives in `core/config/source-contracts.js
 - Missing or incomplete connector reads are coverage gaps, not clean negative findings.
 - Hygiene remains Salesforce-only.
 
+## Coverage proof
+
+Source boundaries are enforced by bundle metadata and validators, not prompt wording.
+
+- Gmail coverage must prove company-domain search. The bundle records searched contact emails, contact-union emails, searched domains, contact domains, and either the newest matching company-domain thread id or `domain_thread_search_status=no_match`.
+- Slack coverage must prove a Slack MCP read. The bundle records `slack_mcp_checked`, searched channel names, channel matches, and the Slack-source `deal_room.source_ref`.
+- A missing Gmail/Slack proof becomes a coverage gap. It cannot become "no email thread," "email went quiet," "no Slack room," or "no Slack activity."
+- `deal-read` validates these claims before presentation. A brief fails if it cites Salesforce as Slack evidence or makes absence claims without the required connector proof.
+
 ## Agent governance
 
 This repo treats each slash-command surface as a scoped operator over opportunity evidence, not as an unrestricted assistant.
@@ -103,7 +112,7 @@ This repo treats each slash-command surface as a scoped operator over opportunit
 - Current write path: `deal-read` may create a Gmail draft only after explicit user confirmation. It never sends email.
 - No-write surface: `pipeline-read` makes no writes. Read, forecast, and hygiene are read-only outputs.
 - Human approval: externally visible actions require an explicit user confirmation for the exact action. Prior approval does not carry over to a different action.
-- Auditability: deal and pipeline briefs must carry computed-inputs evidence and pass the relevant validator before they are treated as final.
+- Auditability: deal and pipeline briefs must carry computed-inputs evidence and pass the relevant validator before they are treated as final. Validators enforce coverage gaps and source-boundary claims.
 - Failure handling: missing or unauthorized connectors become source gaps. The agent should not infer risk from unavailable evidence.
 - Model boundary: this repo uses deterministic flags and posture labels. It does not predict win probability or create local predictive weights.
 

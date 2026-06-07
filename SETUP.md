@@ -38,14 +38,15 @@ Slash commands are registered as symlinks under `~/.claude/skills`:
 Required connectors:
 
 - Salesforce: opportunity truth, CRM fields, and hygiene mode
-- Gmail: email freshness and thread evidence
+- Gmail: email freshness and thread evidence, including company-domain search proof and newest matching domain-thread reads
 - Google Calendar: historical and future meeting context, plus deterministic meeting-cadence flags
 - Zoom: current implemented call provider
-- Slack: Slack MCP channel/message evidence only; Salesforce is never Slack evidence
+- Slack: Slack MCP channel/message evidence only, including searched channels and channel matches; Salesforce is never Slack evidence
 - Google Drive: linked proposal and deal-room documents
 
 All source access should remain read-only. `deal-read` may only create a Gmail draft after explicit confirmation.
 If Google Calendar is unavailable, the repo records a source gap instead of creating Calendar risk flags.
+If Gmail or Slack coverage proof is missing, the repo records a coverage gap instead of allowing "no email" or "no Slack room" claims.
 
 If Claude skills live somewhere else on your machine, set `CLAUDE_SKILLS_DIR`:
 
