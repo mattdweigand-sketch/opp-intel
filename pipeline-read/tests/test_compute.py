@@ -324,6 +324,15 @@ def main():
     ok &= check("degraded aliases: calls_zoom maps to zoom",
                 "zoom_connector_degraded" in r["coverage_gaps"])
 
+    r = run({
+        "today": "2026-06-06",
+        "connector_status": {"slack": "timeout", "google_drive": "partial"},
+    })
+    ok &= check("degraded aliases: slack maps to slack coverage gap",
+                "slack_connector_degraded" in r["coverage_gaps"])
+    ok &= check("degraded aliases: google_drive maps to drive coverage gap",
+                "drive_connector_degraded" in r["coverage_gaps"])
+
     # Regression / INVARIANT: identical input with NO connector_status must behave
     # exactly as before — single_threaded still fires off email-observed basis, the
     # email counts are populated, and no *_connector_degraded gap is emitted.
@@ -380,6 +389,22 @@ def main():
     ok &= check("email coverage: contact-union gap surfaced",
                 "email_contact_union_gap" in r["coverage_gaps"])
     ok &= check("email coverage: single-thread suppressed without SF basis",
+                r["flags"]["single_threaded"] is False)
+
+    # Fixture 14: company-domain search is required. If Salesforce/contact context
+    # identified a prospect domain but the Gmail bundle does not prove that domain
+    # was searched, absence/recency claims are unreliable.
+    r = run({
+        "today": "2026-06-06",
+        "observed_participants": ["solo@prospect.com"],
+        "email_coverage": {
+            "contact_domains": ["prospect.com"],
+            "searched_domains": [],
+        },
+    })
+    ok &= check("email coverage: missing domain search gap surfaced",
+                "email_domain_coverage_gap" in r["coverage_gaps"])
+    ok &= check("email coverage: domain gap suppresses single-thread without SF basis",
                 r["flags"]["single_threaded"] is False)
 
     print("\n" + ("ALL PASS" if ok else "SOME FAILED"))

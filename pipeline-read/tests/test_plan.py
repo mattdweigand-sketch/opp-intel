@@ -39,6 +39,12 @@ def main():
     ok &= check("pipeline: large_run_threshold surfaced", p1["large_run_threshold"] == 15)
     ok &= check("pipeline: read default runs Calendar and Slack/Drive",
                 p1["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom", "Slack", "Google Drive"])
+    ok &= check("pipeline: source contract maps Salesforce to Salesforce",
+                p1["source_contract"]["source_of_truth"]["salesforce"] == "salesforce")
+    ok &= check("pipeline: source contract maps Slack to Slack",
+                p1["source_contract"]["source_of_truth"]["slack"] == "slack")
+    ok &= check("pipeline: cross-source substitution disabled",
+                p1["source_contract"]["cross_source_substitution_allowed"] is False)
 
     # --- Pipeline phase, owner_id known + named quarter window: scoped SOQL with the right WHERE clauses.
     pq = run({"mode": "pipeline", "today": "2026-06-04", "owner_id": "005XX"})
@@ -103,6 +109,9 @@ def main():
                 "Slack_Channel__c" not in poff["salesforce"]["pipeline"])
     ok &= check("internal off: connectors exclude Slack/Drive but keep Calendar",
                 poff["per_deal_connectors"] == ["Salesforce", "Gmail", "Google Calendar", "Zoom"])
+    ok &= check("internal off: source contract excludes Slack/Drive",
+                "slack" not in poff["source_contract"]["source_of_truth"]
+                and "google_drive" not in poff["source_contract"]["source_of_truth"])
 
     # --- Per-deal phase: unchanged deal-read contract (no mode key => deal plan).
     full = run({
@@ -121,7 +130,14 @@ def main():
                 full["gmail"]["domain_thread_search"] == "from:(x.com) OR to:(x.com) newer_than:90d")
     ok &= check("per-deal: most recent domain thread required",
                 full["gmail"]["most_recent_thread_search"]["read"] == "get_thread on the most recent matching thread")
+    ok &= check("per-deal: gmail source contract owns Gmail truth",
+                full["gmail"]["source_contract"]["source_of_truth"] == "gmail")
+    ok &= check("per-deal: gmail coverage proof fields emitted",
+                full["gmail"]["coverage_requirements"]["searched_domains_bundle_field"] == "email_coverage.searched_domains"
+                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id")
     ok &= check("per-deal: calendar emitted", full["calendar"]["source"] == "google_calendar")
+    ok &= check("per-deal: calendar source contract owns Calendar truth",
+                full["calendar"]["source_contract"]["source_of_truth"] == "google_calendar")
     ok &= check("per-deal: calendar future lookup", full["calendar"]["future"]["to"] == "next 30 days")
     ok &= check("per-deal: contact_roles is getRelatedRecords", full["salesforce"]["contact_roles"]["tool"] == "getRelatedRecords")
     ok &= check("per-deal: zoom q set", full["zoom"]["q"] == "Providence Investments")
@@ -132,6 +148,11 @@ def main():
     })
     ok &= check("internal auto: channel-name lookup emitted",
                 missing["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
+    ok &= check("internal auto: Slack source is Slack MCP only",
+                missing["internal_evidence"]["slack"]["source"] == "slack"
+                and missing["internal_evidence"]["slack"]["connector"] == "slack_mcp"
+                and missing["internal_evidence"]["slack"]["salesforce_mapping_allowed"] is False
+                and missing["internal_evidence"]["slack"]["source_contract"]["source_of_truth"] == "slack")
     ok &= check("internal auto: message-body search still disabled",
                 missing["internal_evidence"]["slack"]["broad_search_allowed"] is False)
     ok &= check("internal auto: Providence channel hyphen variant emitted",

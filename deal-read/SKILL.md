@@ -27,6 +27,13 @@ multiple opportunities, list the candidates (name, stage, Added ARR from `Added_
 Five connectors. All reads are read-only. The one write this skill can make is creating a Gmail
 **draft** (never sending), and only on explicit user confirmation (see §6).
 
+Source ownership is data-owned in `../core/config/source-contracts.json` and surfaced by
+`scripts/plan.py` as `source_contract`. Do not substitute one connector for another: Salesforce owns
+Salesforce opportunity/account/contact truth, Gmail owns Gmail thread truth, Google Calendar owns
+Calendar event truth, Zoom owns Zoom call truth, Slack owns Slack channel/message truth through Slack
+MCP only, and Google Drive owns document truth. Missing or incomplete connector reads are coverage gaps,
+not clean negative findings.
+
 - **Salesforce** — `getObjectSchema`, `find`, `soqlQuery`, `getRelatedRecords`, `getUserInfo`
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
@@ -45,8 +52,9 @@ wrappers that delegate there. This SKILL.md owns orchestration, output shape, pr
 Gmail draft policy.
 
 - **`scripts/plan.py`** — emits the exact Salesforce/Gmail/Calendar/Zoom queries to run for this deal. Field
-  names come from `../core/config/sf-fields.json`, the email window from `../core/config/risk-model.json`. You execute
-  what it prints (only you can call the connectors), but you never improvise SOQL.
+  names come from `../core/config/sf-fields.json`, the email window from `../core/config/risk-model.json`,
+  and source ownership from `../core/config/source-contracts.json`. You execute what it prints (only you
+  can call the connectors), but you never improvise SOQL, Gmail domain/thread searches, or Slack lookup.
 - **`scripts/analyze.py`** — the single processing entrypoint. Feed it one bundle of the raw data you
   gathered; it runs `compute.py` + `callstats.py`, parses account history, and normalizes Slack/Drive
   internal evidence, returning every metric, flag, source gap, and the prior-loss summary. Do not

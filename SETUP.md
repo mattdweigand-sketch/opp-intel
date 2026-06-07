@@ -41,7 +41,7 @@ Required connectors:
 - Gmail: email freshness and thread evidence
 - Google Calendar: historical and future meeting context, plus deterministic meeting-cadence flags
 - Zoom: current implemented call provider
-- Slack: mapped deal-room evidence
+- Slack: Slack MCP channel/message evidence only; Salesforce is never Slack evidence
 - Google Drive: linked proposal and deal-room documents
 
 All source access should remain read-only. `deal-read` may only create a Gmail draft after explicit confirmation.

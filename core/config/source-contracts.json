@@ -9,6 +9,123 @@
     "no_slack_post": true,
     "no_drive_edit": true
   },
+  "source_ownership": {
+    "salesforce": {
+      "source_of_truth": "salesforce",
+      "owns": [
+        "opportunity fields",
+        "account fields",
+        "stage",
+        "amount",
+        "close date",
+        "owner",
+        "contacts",
+        "salesforce next step",
+        "salesforce activity history if explicitly read from Salesforce"
+      ],
+      "does_not_own": [
+        "gmail evidence",
+        "slack evidence",
+        "google calendar evidence",
+        "zoom/call evidence",
+        "drive evidence"
+      ]
+    },
+    "gmail": {
+      "source_of_truth": "gmail",
+      "owns": [
+        "email threads",
+        "email participants",
+        "email timestamps",
+        "inbound/outbound email activity",
+        "unanswered email threads",
+        "email recency"
+      ],
+      "required_search": [
+        "derive company domains from Salesforce account/contact data",
+        "search Gmail by company domain",
+        "select the newest matching company-domain thread before making recency claims"
+      ],
+      "does_not_own": [
+        "salesforce stage",
+        "slack activity",
+        "calendar attendance",
+        "zoom/call content"
+      ]
+    },
+    "slack": {
+      "source_of_truth": "slack",
+      "connector": "slack_mcp",
+      "salesforce_role": "none",
+      "owns": [
+        "slack channels",
+        "slack messages",
+        "slack deal-room existence",
+        "slack internal activity"
+      ],
+      "required_search": [
+        "search Slack MCP directly by account/company/channel-name variants"
+      ],
+      "does_not_own": [
+        "salesforce opportunity fields",
+        "gmail activity",
+        "calendar activity",
+        "zoom/call content"
+      ]
+    },
+    "google_calendar": {
+      "source_of_truth": "google_calendar",
+      "owns": [
+        "calendar meetings",
+        "meeting attendees",
+        "meeting timestamps",
+        "calendar event titles/descriptions"
+      ],
+      "does_not_own": [
+        "gmail threads",
+        "slack activity",
+        "salesforce opportunity fields",
+        "zoom/call transcripts"
+      ]
+    },
+    "zoom": {
+      "source_of_truth": "zoom",
+      "owns": [
+        "zoom meetings",
+        "zoom recordings",
+        "zoom summaries",
+        "zoom transcripts",
+        "zoom call participants"
+      ],
+      "does_not_own": [
+        "salesforce opportunity fields",
+        "gmail threads",
+        "slack activity",
+        "calendar events"
+      ]
+    },
+    "google_drive": {
+      "source_of_truth": "google_drive",
+      "owns": [
+        "google drive docs",
+        "proposal document content",
+        "linked document metadata"
+      ],
+      "does_not_own": [
+        "salesforce opportunity fields",
+        "gmail threads",
+        "slack activity",
+        "calendar events",
+        "zoom/call content"
+      ]
+    }
+  },
+  "coverage_rules": {
+    "missing_connector_read": "coverage_gap",
+    "incomplete_connector_read": "coverage_gap",
+    "clean_negative_requires_successful_connector_read": true,
+    "cross_source_substitution_allowed": false
+  },
   "execution_status": {
     "purpose": "Per-source execution status the gather step reports back per deal, so a connector that did not run cleanly cannot be read as a clean negative finding.",
     "allowed_values": ["ok", "empty", "timeout", "error", "partial"],

@@ -62,6 +62,13 @@ The roll-up bundle's `mode` field is set explicitly by the command (`read`, `for
 All reads are read-only. **`pipeline-read` makes no writes**. Drafting a follow-up is a per-deal action
 that lives in `deal-read`.
 
+Source ownership is data-owned in `../core/config/source-contracts.json` and surfaced by
+`scripts/plan.py` as `source_contract`. Do not substitute one connector for another: Salesforce owns
+Salesforce opportunity/account/contact truth, Gmail owns Gmail thread truth, Google Calendar owns
+Calendar event truth, Zoom owns Zoom call truth, Slack owns Slack channel/message truth through Slack
+MCP only, and Google Drive owns document truth. Missing or incomplete connector reads are coverage gaps,
+not clean negative findings.
+
 - **Salesforce** — `getUserInfo`, `getObjectSchema`, `find`, `soqlQuery`, `getRelatedRecords`
 - **Google Calendar** — historical and upcoming meeting lookup
 - **Zoom** — `search_meetings`, `get_meeting_assets`, `recordings_list`
@@ -88,7 +95,8 @@ pipeline aggregation, once over all deals).
 - **`scripts/plan.py`** — two phases. With `{"mode":"pipeline", ...}` it emits the portfolio-list
   query, forecast fields, amount basis, category field, and internal-evidence plan. Without `mode`, it
   emits the per-deal Salesforce/Gmail/Calendar/Zoom queries plus Slack channel/linked-doc instructions when
-  enabled. You execute what it prints; you never improvise SOQL or broad Slack/Drive search. In a
+  enabled, plus the `source_contract` and connector-specific coverage requirements. You execute what it
+  prints; you never improvise SOQL, Gmail recency/thread searches, or broad Slack/Drive search. In a
   `{"mode":"pipeline","hygiene":true,...}` plan, forecast and internal evidence are forced off and
   `per_deal_connectors` is Salesforce-only; pass `"opp_ids":[...]` after the portfolio list to get the
   batched `contact_roles_bulk` query and the `champion_roles` list.

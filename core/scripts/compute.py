@@ -55,6 +55,7 @@ CONNECTOR_STATUS_ALIASES = {
     "google_calendar": "calendar",
     "calls_zoom": "zoom",
     "zoom_calls": "zoom",
+    "google_drive": "drive",
 }
 
 
@@ -73,7 +74,7 @@ def main():
         connector_status[name] = status
     degraded_connectors = [
         name
-        for name in ("email", "zoom", "calendar", "salesforce")
+        for name in ("email", "zoom", "calendar", "salesforce", "slack", "drive")
         if str(connector_status.get(name) or "").strip().lower() in DEGRADED_STATUSES
     ]
     email_degraded = "email" in degraded_connectors
@@ -226,9 +227,7 @@ def main():
         for d in (email_coverage.get("contact_domains") or email_coverage.get("company_domains") or [])
         if str(d).strip()
     }
-    email_domain_coverage_gap = bool(
-        contact_domains and searched_domains and not contact_domains.issubset(searched_domains)
-    )
+    email_domain_coverage_gap = bool(contact_domains and not contact_domains.issubset(searched_domains))
     if email_domain_coverage_gap:
         coverage_gaps.append("email_domain_coverage_gap")
 

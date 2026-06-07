@@ -16,7 +16,7 @@ The repo exists so the two surfaces can share source planning, config, determini
 
 `deal-read` is the single-opportunity coaching workflow.
 
-It reads Salesforce, Gmail, Google Calendar, Zoom, mapped Slack deal rooms, and linked Google Drive proposal docs for one deal. It returns a short risk brief with confidence, account history, top risks, what is going well, call-execution signals, internal evidence, and the next move.
+It reads Salesforce, Gmail, Google Calendar, Zoom, Slack channels through Slack, and linked Google Drive proposal docs for one deal. It returns a short risk brief with confidence, account history, top risks, what is going well, call-execution signals, internal evidence, and the next move.
 
 Use it when the question is about one deal:
 
@@ -83,11 +83,15 @@ The core has explicit depth profiles:
 - `pipeline`: multi-opportunity read that stays shallow enough to run across a full pipeline.
 - `hygiene`: Salesforce-only scan for CRM record quality.
 
-The source boundary is intentional:
+The source boundary is intentional and lives in `core/config/source-contracts.json`:
 
 - Salesforce owns opportunity truth: amount, stage, close date, owner, forecast category, contacts, next step, legal status, and CRM hygiene fields.
-- Gmail, Calendar, Zoom, Slack, and Drive add evidence, confidence, gaps, and next-move context.
-- Slack and Drive evidence must stay bounded to mapped rooms and linked docs unless the pipeline mode explicitly asks for bounded fallback lookup.
+- Gmail owns Gmail thread, participant, timestamp, inbound/outbound, unanswered-thread, and email-recency truth.
+- Google Calendar owns meeting, attendee, timestamp, title, and event-description truth.
+- Zoom owns Zoom meeting, recording, summary, transcript, and call-participant truth.
+- Slack owns Slack channel, message, deal-room existence, and internal-activity truth through Slack MCP only. Salesforce is never Slack evidence.
+- Google Drive owns linked document metadata and proposal document content.
+- Missing or incomplete connector reads are coverage gaps, not clean negative findings.
 - Hygiene remains Salesforce-only.
 
 ## Agent governance

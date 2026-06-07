@@ -36,6 +36,38 @@ def load(name):
         return json.load(f)
 
 
+def source_contracts():
+    return load("source-contracts.json")
+
+
+def source_contract_summary(contracts, source_names):
+    ownership = contracts.get("source_ownership", {})
+    rules = contracts.get("coverage_rules", {})
+    out = {
+        "canonical_config": "core/config/source-contracts.json",
+        "source_of_truth": {},
+        "clean_negative_requires_successful_connector_read": bool(
+            rules.get("clean_negative_requires_successful_connector_read")
+        ),
+        "missing_connector_read": rules.get("missing_connector_read", "coverage_gap"),
+        "cross_source_substitution_allowed": bool(rules.get("cross_source_substitution_allowed")),
+    }
+    for name in source_names:
+        cfg = ownership.get(name, {})
+        out["source_of_truth"][name] = cfg.get("source_of_truth", name)
+    return out
+
+
+def source_requirement(contracts, name):
+    cfg = (contracts.get("source_ownership") or {}).get(name, {})
+    return {
+        "source_of_truth": cfg.get("source_of_truth", name),
+        "owns": cfg.get("owns", []),
+        "does_not_own": cfg.get("does_not_own", []),
+        "required_search": cfg.get("required_search", []),
+    }
+
+
 def dedupe(items):
     out = []
     seen = set()
@@ -219,6 +251,9 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
     drive_profile = profile_cfg.get("drive", {}) if isinstance(profile_cfg.get("drive"), dict) else {}
     source_cfg = fields.get("internal_sources", {})
     doc_cfg = source_cfg.get("linked_docs", {})
+    contracts = source_contracts()
+    slack_requirement = source_requirement(contracts, "slack")
+    drive_requirement = source_requirement(contracts, "google_drive")
     account_or_deal = dedupe([
         ctx.get("account_name"),
         ctx.get("deal_name"),
@@ -231,6 +266,7 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         "mode": mode,
         "window_days": int(ctx.get("internal_window") or cfg.get("default_window_days", 30)),
         "mapping_fields": [],
+        "source_contract": source_contract_summary(contracts, ["slack", "google_drive"]),
         "max_messages": slack_profile.get("max_messages", cfg.get("max_messages_per_room", 80)),
         "max_linked_docs": drive_profile.get("max_docs", cfg.get("max_linked_docs_per_room", 5)),
         "signals": cfg.get("signals", []),
@@ -244,6 +280,10 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
 
     if mode == "auto":
         out["slack"] = {
+            "source": "slack",
+            "connector": "slack_mcp",
+            "source_contract": slack_requirement,
+            "salesforce_mapping_allowed": False,
             "query_type": "channel_name_lookup",
             "steps": [
                 {
@@ -265,6 +305,7 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         }
         out["linked_docs"] = {
             "source": "google_drive",
+            "source_contract": drive_requirement,
             "relationship": doc_cfg.get("relationship", "linked_from_deal_room"),
             "allowed_sources": doc_cfg.get("allowed_sources", ["google_drive"]),
             "max_docs": out["max_linked_docs"],
@@ -273,6 +314,10 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
         return out
 
     out["slack"] = {
+        "source": "slack",
+        "connector": "slack_mcp",
+        "source_contract": slack_requirement,
+        "salesforce_mapping_allowed": False,
         "query_type": "bounded_fallback_lookup",
         "steps": [
             {
@@ -300,6 +345,7 @@ def internal_plan(ctx, fields, model, profile="pipeline"):
     }
     out["linked_docs"] = {
         "source": "google_drive",
+        "source_contract": drive_requirement,
         "relationship": doc_cfg.get("relationship", "linked_from_deal_room"),
         "allowed_sources": doc_cfg.get("allowed_sources", ["google_drive"]),
         "max_docs": out["max_linked_docs"],
@@ -313,6 +359,7 @@ def calendar_plan(ctx, model, profile="pipeline"):
     cfg = (model.get("calendar") or {}).get(profile, {})
     if not cfg or cfg == "off":
         return None
+    contracts = source_contracts()
 
     terms = dedupe([
         ctx.get("account_name"),
@@ -324,6 +371,7 @@ def calendar_plan(ctx, model, profile="pipeline"):
     if not terms and not emails:
         return {
             "source": "google_calendar",
+            "source_contract": source_requirement(contracts, "google_calendar"),
             "coverage": "insufficient_context",
             "source_gaps": ["calendar_context_missing"],
             "read_only": True,
@@ -333,6 +381,7 @@ def calendar_plan(ctx, model, profile="pipeline"):
     lookahead_days = int(ctx.get("calendar_future_days") or cfg.get("future_days", 60))
     return {
         "source": "google_calendar",
+        "source_contract": source_requirement(contracts, "google_calendar"),
         "query": {
             "terms": terms,
             "attendees": emails,
@@ -355,6 +404,7 @@ def calendar_plan(ctx, model, profile="pipeline"):
 def pipeline_plan(ctx):
     fields = load("sf-fields.json")
     model = load("risk-model.json")
+    contracts = source_contracts()
     scope = fields["pipeline_scope"]
     pipe_cfg = model.get("pipeline", {})
     scope_cfg = pipe_cfg.get("scope", {})
@@ -378,10 +428,13 @@ def pipeline_plan(ctx):
     # --internal auto|force).
     # See SKILL.md §1.3.
     per_deal_connectors = ["Salesforce"] if hygiene else ["Salesforce", "Gmail", "Google Calendar", "Zoom"]
+    source_names = ["salesforce"] if hygiene else ["salesforce", "gmail", "google_calendar", "zoom"]
     if internal:
         per_deal_connectors += ["Slack", "Google Drive"]
+        source_names += ["slack", "google_drive"]
 
     out = {"salesforce": {}, "window": window,
+           "source_contract": source_contract_summary(contracts, source_names),
            "large_run_threshold": pipe_cfg.get("large_run_threshold", 15),
            "per_deal_connectors": per_deal_connectors}
     if hygiene:
@@ -439,9 +492,10 @@ def deal_plan(ctx, profile="pipeline"):
     """Per-deal query plan — identical contract to deal-read's plan.py."""
     fields = load("sf-fields.json")
     model = load("risk-model.json")
+    contracts = source_contracts()
     window = model["thresholds"]["email_window_days"]
 
-    sf = {}
+    sf = {"source_contract": source_requirement(contracts, "salesforce")}
     if ctx.get("deal_name"):
         name = ctx["deal_name"].replace('"', "")
         sf["find"] = (
@@ -483,7 +537,19 @@ def deal_plan(ctx, profile="pipeline"):
                 f"FROM Contact WHERE AccountId = '{ctx['account_id']}' AND Email != null"
             )
 
-    gmail = {"sent_freshness": f"in:sent newer_than:{window}d"}
+    gmail = {
+        "source_contract": source_requirement(contracts, "gmail"),
+        "coverage_requirements": {
+            "derive_domains_from": "Salesforce account/contact emails only as search context, not as Gmail evidence",
+            "searched_emails_bundle_field": "email_coverage.searched_emails",
+            "contact_union_bundle_field": "email_coverage.contact_union_emails",
+            "searched_domains_bundle_field": "email_coverage.searched_domains",
+            "contact_domains_bundle_field": "email_coverage.contact_domains",
+            "newest_thread_bundle_field": "email_coverage.newest_domain_thread_id",
+            "newest_thread_rule": "Read get_thread on the most recent matching company-domain thread before recency claims.",
+        },
+        "sent_freshness": f"in:sent newer_than:{window}d",
+    }
     emails = ctx.get("contact_emails") or []
     if emails:
         ors = " OR ".join(emails)
@@ -534,13 +600,23 @@ def deal_plan(ctx, profile="pipeline"):
     zoom = {}
     if ctx.get("account_name"):
         zoom = {
+            "source": "zoom",
+            "source_contract": source_requirement(contracts, "zoom"),
             "q": ctx["account_name"],
             "from": ctx.get("created_date", f"last {window} days"),
             "to": ctx.get("today", "now"),
             "include_zoom_my_notes": True,
         }
 
-    out = {"salesforce": sf, "gmail": gmail, "zoom": zoom}
+    out = {
+        "source_contract": source_contract_summary(
+            contracts,
+            ["salesforce", "gmail", "google_calendar", "zoom", "slack", "google_drive"],
+        ),
+        "salesforce": sf,
+        "gmail": gmail,
+        "zoom": zoom,
+    }
     if calendar:
         out["calendar"] = calendar
     internal = internal_plan(ctx, fields, model, profile=profile)

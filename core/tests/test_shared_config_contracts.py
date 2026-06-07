@@ -48,6 +48,24 @@ def main():
     ok &= check("shared sf fields include pipeline scope", "pipeline_scope" in fields)
     ok &= check("contact role grounding preserved", {"Role", "IsPrimary"}.issubset(set(fields["contact_fields"])))
     ok &= check("read-only source contract", contracts["read_policy"]["sources_are_read_only"] is True)
+    ownership = contracts["source_ownership"]
+    ok &= check("source ownership: Salesforce owns only Salesforce truth",
+                ownership["salesforce"]["source_of_truth"] == "salesforce"
+                and "slack evidence" in ownership["salesforce"]["does_not_own"]
+                and "gmail evidence" in ownership["salesforce"]["does_not_own"]
+                and "google calendar evidence" in ownership["salesforce"]["does_not_own"])
+    ok &= check("source ownership: Gmail owns Gmail truth and requires domain search",
+                ownership["gmail"]["source_of_truth"] == "gmail"
+                and any("company domains" in rule for rule in ownership["gmail"]["required_search"]))
+    ok &= check("source ownership: Slack owns Slack truth via Slack MCP only",
+                ownership["slack"]["source_of_truth"] == "slack"
+                and ownership["slack"]["connector"] == "slack_mcp"
+                and ownership["slack"]["salesforce_role"] == "none")
+    ok &= check("source ownership: Calendar owns Calendar truth",
+                ownership["google_calendar"]["source_of_truth"] == "google_calendar")
+    ok &= check("coverage rules: cross-source substitution disabled",
+                contracts["coverage_rules"]["cross_source_substitution_allowed"] is False
+                and contracts["coverage_rules"]["missing_connector_read"] == "coverage_gap")
     ok &= check("calendar source contract", contracts["sources"]["calendar"]["profiles"] == ["deal", "pipeline"])
     ok &= check("connector status aliases documented",
                 "gmail" in contracts["sources"]["gmail"]["status_key_aliases"]

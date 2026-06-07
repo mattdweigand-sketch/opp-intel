@@ -49,7 +49,14 @@ def main():
                 full["gmail"]["domain_thread_search"] == "from:(x.com) OR to:(x.com) newer_than:90d")
     ok &= check("gmail newest domain thread required",
                 full["gmail"]["most_recent_thread_search"]["sort"] == "newest_first")
+    ok &= check("gmail source contract owns Gmail truth",
+                full["gmail"]["source_contract"]["source_of_truth"] == "gmail")
+    ok &= check("gmail coverage proof fields emitted",
+                full["gmail"]["coverage_requirements"]["searched_domains_bundle_field"] == "email_coverage.searched_domains"
+                and full["gmail"]["coverage_requirements"]["newest_thread_bundle_field"] == "email_coverage.newest_domain_thread_id")
     ok &= check("calendar emitted", full["calendar"]["source"] == "google_calendar")
+    ok &= check("calendar source contract owns Calendar truth",
+                full["calendar"]["source_contract"]["source_of_truth"] == "google_calendar")
     ok &= check("calendar uses attendees", "a@x.com" in full["calendar"]["query"]["attendees"])
     ok &= check("calendar has future lookup", full["calendar"]["future"]["to"] == "next 60 days")
     ok &= check("zoom q set", full["zoom"]["q"] == "Providence Investments")
@@ -78,6 +85,11 @@ def main():
     auto = run({"account_name": "Providence Investments"})
     ok &= check("internal auto: channel-name lookup emitted",
                 auto["internal_evidence"]["slack"]["query_type"] == "channel_name_lookup")
+    ok &= check("internal auto: Slack source is Slack MCP only",
+                auto["internal_evidence"]["slack"]["source"] == "slack"
+                and auto["internal_evidence"]["slack"]["connector"] == "slack_mcp"
+                and auto["internal_evidence"]["slack"]["salesforce_mapping_allowed"] is False
+                and auto["internal_evidence"]["slack"]["source_contract"]["source_of_truth"] == "slack")
     ok &= check("internal auto: broad search not allowed",
                 auto["internal_evidence"]["broad_search_allowed"] is False
                 and auto["internal_evidence"]["slack"]["broad_search_allowed"] is False)

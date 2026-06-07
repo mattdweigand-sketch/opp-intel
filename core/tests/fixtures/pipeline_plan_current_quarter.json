@@ -20,6 +20,20 @@
       "close_on_or_after": "2026-05-01",
       "close_on_or_before": "2026-07-31"
     },
+    "source_contract": {
+      "canonical_config": "core/config/source-contracts.json",
+      "source_of_truth": {
+        "salesforce": "salesforce",
+        "gmail": "gmail",
+        "google_calendar": "google_calendar",
+        "zoom": "zoom",
+        "slack": "slack",
+        "google_drive": "google_drive"
+      },
+      "clean_negative_requires_successful_connector_read": true,
+      "missing_connector_read": "coverage_gap",
+      "cross_source_substitution_allowed": false
+    },
     "large_run_threshold": 15,
     "per_deal_connectors": [
       "Salesforce",
@@ -33,6 +47,16 @@
       "mode": "force",
       "window_days": 30,
       "mapping_fields": [],
+      "source_contract": {
+        "canonical_config": "core/config/source-contracts.json",
+        "source_of_truth": {
+          "slack": "slack",
+          "google_drive": "google_drive"
+        },
+        "clean_negative_requires_successful_connector_read": true,
+        "missing_connector_read": "coverage_gap",
+        "cross_source_substitution_allowed": false
+      },
       "max_messages": 40,
       "max_linked_docs": 3,
       "signals": [
@@ -50,6 +74,27 @@
       ],
       "broad_search_allowed": true,
       "slack": {
+        "source": "slack",
+        "connector": "slack_mcp",
+        "source_contract": {
+          "source_of_truth": "slack",
+          "owns": [
+            "slack channels",
+            "slack messages",
+            "slack deal-room existence",
+            "slack internal activity"
+          ],
+          "does_not_own": [
+            "salesforce opportunity fields",
+            "gmail activity",
+            "calendar activity",
+            "zoom/call content"
+          ],
+          "required_search": [
+            "search Slack MCP directly by account/company/channel-name variants"
+          ]
+        },
+        "salesforce_mapping_allowed": false,
         "query_type": "bounded_fallback_lookup",
         "steps": [
           {
@@ -77,6 +122,22 @@
       },
       "linked_docs": {
         "source": "google_drive",
+        "source_contract": {
+          "source_of_truth": "google_drive",
+          "owns": [
+            "google drive docs",
+            "proposal document content",
+            "linked document metadata"
+          ],
+          "does_not_own": [
+            "salesforce opportunity fields",
+            "gmail threads",
+            "slack activity",
+            "calendar events",
+            "zoom/call content"
+          ],
+          "required_search": []
+        },
         "relationship": "linked_from_deal_room",
         "allowed_sources": [
           "google_drive"
