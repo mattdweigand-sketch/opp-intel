@@ -62,7 +62,7 @@ def main():
                 all(field in allowed for field in amount["fields"].values()))
     ok &= check("amount: bare Amount is not default",
                 amount["fields"][amount["default"]] != "Amount")
-    ok &= check("amount: default ACV query excludes calculated and generic amount fields",
+    ok &= check("amount: default ACV query excludes non-Added-ARR money fields",
                 "Calculated_ACV__c" not in sf["opportunity_fields"]
                 and "Amount__c" not in sf["opportunity_fields"]
                 and "Calculated_ACV__c" not in sf["pipeline_scope"]["fields"]

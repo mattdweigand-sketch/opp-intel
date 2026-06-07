@@ -132,7 +132,7 @@ def main():
                    "deals": basis_deals})
     ok &= check("basis acv: category rollup sums ACV not CRM amount",
                 acv_run["forecast"]["category_rollup"]["commit"]["amount"] == 21750)
-    ok &= check("basis acv: displayed ACV ignores aliases and calculated ACV",
+    ok &= check("basis acv: displayed ACV ignores aliases and non-Added-ARR money fields",
                 [r["acv"] for r in acv_run["ranking"]] == [18000, 3750])
     ok &= check("basis acv: portfolio and category totals agree",
                 acv_run["portfolio"]["total_acv"] == acv_run["forecast"]["category_rollup"]["commit"]["amount"])
